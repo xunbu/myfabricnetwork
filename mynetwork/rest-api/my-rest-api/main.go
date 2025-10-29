@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
@@ -46,6 +48,10 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Static("/static", "./static")
+	r.GET("/", func(c *gin.Context) {
+		c.File("./static/index.html")
+	})
 	r.Use(func(c *gin.Context) {
 		c.Set("connection", clientConnection)
 		c.Set("gateway", gw)
@@ -56,6 +62,7 @@ func main() {
 	})
 
 	r.GET("/valuechain", getValueChainInfo)
+	r.GET("/valuechain/getBlockByPage", getBlockListByPage)
 
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
@@ -104,4 +111,41 @@ func getValueChainInfo(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func getBlockListByPage(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	pageNumStr := c.DefaultQuery("pageNum", "0")
+	pageNum, err := strconv.ParseUint(pageNumStr, 10, 64)
+	if err != nil {
+		fmt.Println("转换错误:", err)
+		return
+	}
+	pageSizeStr := c.DefaultQuery("pageSize", "1")
+	pageSize, err := strconv.ParseUint(pageSizeStr, 10, 64)
+	if err != nil {
+		fmt.Println("转换错误:", err)
+		return
+	}
+	//func GetBlockListByPage(gw *client.Gateway, channelName string, pageNum uint64, pageSize uint64, includeTxDetails bool) ([]*BlockInfo, error)
+	//type BlockInfo struct {
+	// 	BlockHash    string    `json:"blockHash"`
+	// 	PreviousHash string    `json:"previousHash"`
+	// 	MerkleRoot   string    `json:"dataHash"`
+	// 	BlockNumber  uint64    `json:"blockNumber"`
+	// 	TxCount      uint64    `json:"txCount"`
+	// 	BlockSize    int64     `json:"blockSize"`
+	// 	Timestamp    time.Time `json:"timestamp"`
+	// 	ChannelID    string    `json:"channelId"`
+	// 	BlockCreator string    `json:"blockCreator,omitempty"` // 可选字段
+	// 	TxIDs        []string  `json:"txIds,omitempty"`        // 可选字段，交易ID列表
+	// }
+	response, err := gateway.GetBlockListByPage(gw, channelName, pageNum, pageSize, true)
+	if err != nil {
+		fmt.Println("获取BlockList错误,%w", err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
+
 }
