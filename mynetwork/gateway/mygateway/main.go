@@ -1,16 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
+	"guolong.com/fabric-gateway/admin"
 	"guolong.com/fabric-gateway/gateway"
 )
 
 const (
 	mspID        = "Org1MSP"
 	cryptoPath   = "../../organizations/peerOrganizations/guolong.com"
-	certPath     = cryptoPath + "/users/User1@guolong.com/msp/signcerts"
-	keyPath      = cryptoPath + "/users/User1@guolong.com/msp/keystore"
+	certPath     = cryptoPath + "/users/Admin@guolong.com/msp/signcerts"
+	keyPath      = cryptoPath + "/users/Admin@guolong.com/msp/keystore"
 	tlsCertPath  = cryptoPath + "/peers/peer0.guolong.com/tls/ca.crt"
 	peerEndpoint = "dns:///localhost:7051"
 	gatewayPeer  = "peer0.guolong.com"
@@ -29,11 +31,20 @@ func main() {
 	}
 
 	defer gw.Close()
-	channelName := "mychannel"
-	gateway.GetTransactionCount(gw, channelName)
-	v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "GetAllAssets")
+	// channelName := "mychannel"
+	// gateway.GetTransactionCount(gw, channelName)
+	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "GetAllAssets")
+	// if err != nil {
+	// 	fmt.Println("error in EvaluateTransaction")
+	// }
+	// fmt.Printf("value:%v", v)
+	peer, err := admin.GetPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
-		fmt.Println("error in EvaluateTransaction")
+		panic(err)
 	}
-	fmt.Printf("value:%v", v)
+	v, err := peer.QueryInstalled(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(len(v.InstalledChaincodes))
 }

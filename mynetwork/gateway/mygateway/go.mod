@@ -3,6 +3,7 @@ module guolong.com/fabric-gateway
 go 1.24.4
 
 require (
+	github.com/hyperledger/fabric-admin-sdk v0.1.0
 	github.com/hyperledger/fabric-gateway v1.7.0
 	github.com/hyperledger/fabric-protos-go-apiv2 v0.3.4
 	google.golang.org/grpc v1.71.0
@@ -10,6 +11,7 @@ require (
 )
 
 require (
+	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect

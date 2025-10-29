@@ -4,15 +4,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
+	"guolong.com/fabric-gateway/admin"
 	"guolong.com/fabric-gateway/gateway"
 )
 
 const (
 	mspID        = "Org1MSP"
 	cryptoPath   = "../../organizations/peerOrganizations/guolong.com"
-	certPath     = cryptoPath + "/users/User1@guolong.com/msp/signcerts"
-	keyPath      = cryptoPath + "/users/User1@guolong.com/msp/keystore"
+	certPath     = cryptoPath + "/users/Admin@guolong.com/msp/signcerts"
+	keyPath      = cryptoPath + "/users/Admin@guolong.com/msp/keystore"
 	tlsCertPath  = cryptoPath + "/peers/peer0.guolong.com/tls/ca.crt"
 	peerEndpoint = "dns:///localhost:7051"
 	gatewayPeer  = "peer0.guolong.com"
@@ -31,11 +33,15 @@ func main() {
 
 	defer gw.Close()
 	channelName := "mychannel"
-
+	peer, err := admin.GetPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	if err != nil {
+		panic(err)
+	}
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
 		c.Set("gateway", gw)
 		c.Set("channelName", channelName)
+		c.Set("peer", peer)
 		c.Next()
 	})
 
@@ -48,7 +54,7 @@ func main() {
 func getValueChainInfo(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-
+	peer := c.MustGet("peer").(*chaincode.Peer)
 	response := gin.H{}
 	var err error
 
@@ -69,8 +75,12 @@ func getValueChainInfo(c *gin.Context) {
 		c.Error(err)
 		return
 	}
+	response["chainCodeCount"], err = admin.GetChaincodeCount(peer)
+	if err != nil {
+		c.Error(err)
+		return
+	}
 
-	// response["ChaincodeCount"], err = gateway.GetChaincodeCount(gw, channelName)
 	if err != nil {
 		c.Error(err)
 		return
