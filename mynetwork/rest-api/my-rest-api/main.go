@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/discovery"
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"guolong.com/fabric-gateway/admin"
 	"guolong.com/fabric-gateway/gateway"
@@ -33,15 +34,21 @@ func main() {
 
 	defer gw.Close()
 	channelName := "mychannel"
-	peer, err := admin.GetPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	chaincodePeer, err := admin.GetChaincodePeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		panic(err)
 	}
+	discoveryPeer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
 	r.Use(func(c *gin.Context) {
 		c.Set("gateway", gw)
 		c.Set("channelName", channelName)
-		c.Set("peer", peer)
+		c.Set("chaincodePeer", chaincodePeer)
+		c.Set("discoveryPeer", discoveryPeer)
 		c.Next()
 	})
 
@@ -54,7 +61,8 @@ func main() {
 func getValueChainInfo(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-	peer := c.MustGet("peer").(*chaincode.Peer)
+	chaincodePeer := c.MustGet("chaincodePeer").(*chaincode.Peer)
+	discoveryPeer := c.MustGet("discoveryPeer").(*discovery.Peer)
 	response := gin.H{}
 	var err error
 
@@ -75,12 +83,13 @@ func getValueChainInfo(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	response["chainCodeCount"], err = admin.GetChaincodeCount(peer)
+	response["chainCodeCount"], err = admin.GetChaincodeCount(chaincodePeer)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
+	response["nodeCount"], err = admin.GetPeersCount(discoveryPeer, channelName)
 	if err != nil {
 		c.Error(err)
 		return

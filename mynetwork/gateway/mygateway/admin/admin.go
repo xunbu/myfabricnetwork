@@ -10,19 +10,43 @@ import (
 	"path"
 
 	"github.com/hyperledger/fabric-admin-sdk/pkg/chaincode"
+	"github.com/hyperledger/fabric-admin-sdk/pkg/discovery"
 	"github.com/hyperledger/fabric-admin-sdk/pkg/identity"
 	"google.golang.org/grpc"
 )
 
-// 以下为获取peer和gatewayadmin的代码
-func GetPeer(conn *grpc.ClientConn, mspID, cryptoPath, certPath, keyPath string) (*chaincode.Peer, error) {
+// ================discovery
+func GetDiscoveryPeer(conn *grpc.ClientConn, mspID, cryptoPath, certPath, keyPath string) (*discovery.Peer, error) {
+	id, err := identity.NewPrivateKeySigningIdentity(mspID, readCertificate(certPath), readPrivateKey(keyPath))
+	if err != nil {
+		return nil, fmt.Errorf("error in getpeer %w", err)
+	}
+	return discovery.NewPeer(conn, id), nil
+}
+
+// 获取peer节点总数
+func GetPeersCount(discoveryPeer *discovery.Peer, channelName string) (uint64, error) {
+	peersResult, err := discoveryPeer.PeerMembershipQuery(context.Background(), channelName, nil)
+	if err != nil {
+		return 0, fmt.Errorf("Error in discovery PeerMembershipQuery,%w", err)
+	}
+	peersmap := peersResult.PeersByOrg
+	count := 0
+	for _, peers := range peersmap {
+		count += len(peers.Peers)
+	}
+	return uint64(count), nil
+}
+
+// ===============chaincode
+func GetChaincodePeer(conn *grpc.ClientConn, mspID, cryptoPath, certPath, keyPath string) (*chaincode.Peer, error) {
 	id, err := identity.NewPrivateKeySigningIdentity(mspID, readCertificate(certPath), readPrivateKey(keyPath))
 	if err != nil {
 		return nil, fmt.Errorf("error in getpeer %w", err)
 	}
 	return chaincode.NewPeer(conn, id), nil
 }
-func GetGatewayAdmin(conn *grpc.ClientConn, mspID, cryptoPath, certPath, keyPath string) *chaincode.Gateway {
+func GetChaincodeGateway(conn *grpc.ClientConn, mspID, cryptoPath, certPath, keyPath string) *chaincode.Gateway {
 	id, err := identity.NewPrivateKeySigningIdentity(mspID, readCertificate(certPath), readPrivateKey(keyPath))
 	if err != nil {
 		panic(err)
@@ -90,8 +114,8 @@ func readFirstFile(dirPath string) ([]byte, error) {
 }
 
 // 以下为获取信息的代码
-func GetChaincodeCount(peer *chaincode.Peer) (uint64, error) {
-	v, err := peer.QueryInstalled(context.Background())
+func GetChaincodeCount(chaincodePeer *chaincode.Peer) (uint64, error) {
+	v, err := chaincodePeer.QueryInstalled(context.Background())
 	if err != nil {
 		return 0, fmt.Errorf("error in QueryInstalled,%w", err)
 	}

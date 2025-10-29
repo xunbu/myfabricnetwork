@@ -31,20 +31,27 @@ func main() {
 	}
 
 	defer gw.Close()
-	// channelName := "mychannel"
+	channelName := "mychannel"
 	// gateway.GetTransactionCount(gw, channelName)
 	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "GetAllAssets")
 	// if err != nil {
 	// 	fmt.Println("error in EvaluateTransaction")
 	// }
 	// fmt.Printf("value:%v", v)
-	peer, err := admin.GetPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
+
+	// 以下为admin-sdk
+	peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		panic(err)
 	}
-	v, err := peer.QueryInstalled(context.Background())
+	// v, err := peer.QueryInstalled(context.Background())
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Print(len(v.InstalledChaincodes))
+	v, err := peer.PeerMembershipQuery(context.Background(), channelName, nil)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Print(len(v.InstalledChaincodes))
+	fmt.Printf("%v\n", len(v.PeersByOrg))
 }
