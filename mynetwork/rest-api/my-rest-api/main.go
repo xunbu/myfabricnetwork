@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"guolong.com/fabric-gateway/gateway"
 )
 
@@ -18,10 +19,12 @@ const (
 )
 
 func main() {
-	clientConnection := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
-
+	clientConnection, err := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
+	if err != nil {
+		panic(err)
+	}
 	defer clientConnection.Close()
-	gw, err := gateway.GetGateWay(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	gw, err := gateway.GetGateway(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		panic(err)
 	}
@@ -30,18 +33,47 @@ func main() {
 	channelName := "mychannel"
 
 	r := gin.Default()
-	r.GET("/valuechain", func(c *gin.Context) {
-		// 返回 JSON 响应
-		c.JSON(http.StatusOK, gin.H{
-			"blockHeight": gateway.GetBlockHeight(gw, channelName),
-			// "nodeCount":             gateway.GetNodeCount(gw, channelName),
-			"totalTransactionCount": gateway.GetTransactionCount(gw, channelName),
-			// "chaincodeNum":          gateway.GetChaincodeCount(gw, channelName),
-			"orgCount": gateway.GetOrgCount(gw, channelName),
-		})
+	r.Use(func(c *gin.Context) {
+		c.Set("gateway", gw)
+		c.Set("channelName", channelName)
+		c.Next()
 	})
+
+	r.GET("/valuechain", getValueChainInfo)
 
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
+}
+func getValueChainInfo(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+
+	response := gin.H{}
+	var err error
+
+	response["blockHeight"], err = gateway.GetBlockHeight(gw, channelName)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response["totalTransactionCount"], err = gateway.GetTransactionCount(gw, channelName)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	response["orgCount"], err = gateway.GetOrganizationCount(gw, channelName)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	// response["ChaincodeCount"], err = gateway.GetChaincodeCount(gw, channelName)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
 }

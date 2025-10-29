@@ -17,11 +17,13 @@ const (
 )
 
 func main() {
-	clientConnection := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
-
+	clientConnection, err := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
+	if err != nil {
+		panic(err)
+	}
 	defer clientConnection.Close()
 
-	gw, err := gateway.GetGateWay(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	gw, err := gateway.GetGateway(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		panic(err)
 	}

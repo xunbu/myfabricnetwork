@@ -18,18 +18,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-//============下面为创建gateway连接的代码=======
+//============ 创建gateway连接的代码 =======
 
-// newGrpcConnection 函数用于创建到网关服务器的 gRPC 连接。
-func NewGrpcConnection(tlsCertPath string, gatewayPeer string, peerEndpoint string) *grpc.ClientConn {
+// NewGrpcConnection 创建到网关服务器的gRPC连接
+func NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint string) (*grpc.ClientConn, error) {
 	certificatePEM, err := os.ReadFile(tlsCertPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to read TLS certifcate file: %w", err))
+		return nil, fmt.Errorf("读取TLS证书文件失败: %w", err)
 	}
 
 	certificate, err := identity.CertificateFromPEM(certificatePEM)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("解析证书失败: %w", err)
 	}
 
 	certPool := x509.NewCertPool()
@@ -38,204 +38,187 @@ func NewGrpcConnection(tlsCertPath string, gatewayPeer string, peerEndpoint stri
 
 	connection, err := grpc.NewClient(peerEndpoint, grpc.WithTransportCredentials(transportCredentials))
 	if err != nil {
-		panic(fmt.Errorf("failed to create gRPC connection: %w", err))
+		return nil, fmt.Errorf("创建gRPC连接失败: %w", err)
 	}
 
-	return connection
+	return connection, nil
 }
 
-func GetGateWay(clientConnection *grpc.ClientConn, mspID string, cryptoPath string, certPath string, keyPath string) (*client.Gateway, error) {
+// GetGateway 创建并返回Gateway实例
+func GetGateway(clientConnection *grpc.ClientConn, mspID, cryptoPath, certPath, keyPath string) (*client.Gateway, error) {
+	id, err := newIdentity(certPath, mspID)
+	if err != nil {
+		return nil, fmt.Errorf("创建身份失败: %w", err)
+	}
 
-	id := newIdentity(certPath, mspID)
-	sign := newSign(keyPath)
+	sign, err := newSign(keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("创建签名器失败: %w", err)
+	}
 
 	gw, err := client.Connect(
 		id,
 		client.WithSign(sign),
 		client.WithHash(hash.SHA256),
 		client.WithClientConnection(clientConnection),
-		// Default timeouts for different gRPC calls
 		client.WithEvaluateTimeout(5*time.Second),
 		client.WithEndorseTimeout(15*time.Second),
 		client.WithSubmitTimeout(5*time.Second),
 		client.WithCommitStatusTimeout(1*time.Minute),
 	)
 	if err != nil {
-		fmt.Println("创建gateway链接错误")
-		return nil, err
+		return nil, fmt.Errorf("连接到gateway失败: %w", err)
 	}
+
 	return gw, nil
 }
 
-// newIdentity creates a client identity for this Gateway connection using an X.509 certificate.
-func newIdentity(certPath string, mspID string) *identity.X509Identity {
+// newIdentity 使用X.509证书创建客户端身份
+func newIdentity(certPath, mspID string) (*identity.X509Identity, error) {
 	certificatePEM, err := readFirstFile(certPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to read certificate file: %w", err))
+		return nil, fmt.Errorf("读取证书文件失败: %w", err)
 	}
 
 	certificate, err := identity.CertificateFromPEM(certificatePEM)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("解析证书失败: %w", err)
 	}
 
 	id, err := identity.NewX509Identity(mspID, certificate)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("创建X509身份失败: %w", err)
 	}
 
-	return id
+	return id, nil
 }
 
-// newSign creates a function that generates a digital signature from a message digest using a private key.
-func newSign(keyPath string) identity.Sign {
+// newSign 创建生成数字签名的函数
+func newSign(keyPath string) (identity.Sign, error) {
 	privateKeyPEM, err := readFirstFile(keyPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to read private key file: %w", err))
+		return nil, fmt.Errorf("读取私钥文件失败: %w", err)
 	}
 
 	privateKey, err := identity.PrivateKeyFromPEM(privateKeyPEM)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("解析私钥失败: %w", err)
 	}
 
 	sign, err := identity.NewPrivateKeySign(privateKey)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("创建签名器失败: %w", err)
 	}
 
-	return sign
+	return sign, nil
 }
 
+// readFirstFile 读取目录中的第一个文件
 func readFirstFile(dirPath string) ([]byte, error) {
 	dir, err := os.Open(dirPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("打开目录失败: %w", err)
 	}
 
 	fileNames, err := dir.Readdirnames(1)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("读取目录内容失败: %w", err)
 	}
 
-	return os.ReadFile(path.Join(dirPath, fileNames[0]))
+	if len(fileNames) == 0 {
+		return nil, fmt.Errorf("目录中没有文件")
+	}
+
+	data, err := os.ReadFile(path.Join(dirPath, fileNames[0]))
+	if err != nil {
+		return nil, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	return data, nil
 }
 
-// ============下面为gateway代码=======
-// 查询交易
-func EvaluateTransaction(gw *client.Gateway, channelName string, chainCodeName string, funcName string, args ...string) ([]byte, error) {
+//============ Gateway操作函数 =======
+
+// EvaluateTransaction 执行查询交易
+func EvaluateTransaction(gw *client.Gateway, channelName, chainCodeName, funcName string, args ...string) ([]byte, error) {
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chainCodeName)
-	result, err := contract.EvaluateTransaction(funcName, args...)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return contract.EvaluateTransaction(funcName, args...)
 }
 
-// 提交交易
-func SubmitTransaction(gw *client.Gateway, channelName string, chainCodeName string, funcName string, args ...string) ([]byte, error) {
+// SubmitTransaction 执行提交交易
+func SubmitTransaction(gw *client.Gateway, channelName, chainCodeName, funcName string, args ...string) ([]byte, error) {
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chainCodeName)
-	result, err := contract.SubmitTransaction(funcName, args...)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return contract.SubmitTransaction(funcName, args...)
 }
 
-// 获取交易总数
-func GetTransactionCount(gw *client.Gateway, channelName string) uint64 {
-	network := gw.GetNetwork(channelName)
-	qsccContract := network.GetContract("qscc")
-	fmt.Println("\n--> 正在获取交易总数...")
-
-	// 1. 获取区块链信息，主要是为了得到区块高度
-	// 调用系统链码 'qscc' 的 'GetChainInfo' 方法。它返回的是一个序列化的 common.BlockchainInfo protobuf 消息
-	chainInfoBytes, err := qsccContract.EvaluateTransaction("GetChainInfo", channelName)
-	if err != nil {
-		panic(fmt.Errorf("获取区块链信息失败: %w", err))
-	}
-
-	// 使用 proto.Unmarshal 来解析 Protobuf 数据，而不是 json.Unmarshal
-	var chainInfo common.BlockchainInfo
-	if err := proto.Unmarshal(chainInfoBytes, &chainInfo); err != nil {
-		panic(fmt.Errorf("解析区块链信息失败: %w", err))
-	}
-
-	blockchainHeight := chainInfo.Height
-	fmt.Printf("当前区块高度为: %d\n", blockchainHeight)
-
-	var totalTransactionCount uint64 = 0
-
-	// 2. 遍历所有区块
-	for blockNumber := range blockchainHeight {
-		// 3. 通过 qscc 的 GetBlockByNumber 方法获取区块数据
-		// 返回的是序列化后的 common.Block protobuf 消息
-		blockBytes, err := qsccContract.EvaluateTransaction("GetBlockByNumber", channelName, fmt.Sprint(blockNumber))
-		if err != nil {
-			fmt.Printf("警告: 获取区块 %d 失败: %v\n", blockNumber, err)
-			continue // 如果某个区块获取失败，可以跳过或进行错误处理
-		}
-
-		// 4. 反序列化区块数据
-		var block common.Block
-		if err := proto.Unmarshal(blockBytes, &block); err != nil {
-			fmt.Printf("警告: 解析区块 %d 失败: %v\n", blockNumber, err)
-			continue
-		}
-
-		// 5. 统计区块中的交易数量
-		// block.Data.Data 是一个字节数组的切片，每个元素代表一笔交易
-		transactionCountInBlock := len(block.Data.Data)
-		fmt.Printf("区块 %d 中包含 %d 笔交易\n", blockNumber, transactionCountInBlock)
-		totalTransactionCount += uint64(transactionCountInBlock)
-	}
-
-	fmt.Printf("\n--> 完成: 通道 '%s' 上的交易总数为: %d\n", channelName, totalTransactionCount)
-	return totalTransactionCount
-}
-
-func GetBlockHeight(gw *client.Gateway, channelName string) int {
-	fmt.Println("\n--> 正在获取区块高度...")
-
+// GetTransactionCount 返回通道中的交易总数
+func GetTransactionCount(gw *client.Gateway, channelName string) (uint64, error) {
+	// 复用EvaluateTransaction获取区块链信息
 	chainInfoBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetChainInfo", channelName)
 	if err != nil {
-		panic(fmt.Errorf("获取区块链信息失败: %w", err))
+		return 0, fmt.Errorf("获取区块链信息失败: %w", err)
 	}
 
-	// 使用 proto.Unmarshal 来解析 Protobuf 数据，而不是 json.Unmarshal
 	var chainInfo common.BlockchainInfo
 	if err := proto.Unmarshal(chainInfoBytes, &chainInfo); err != nil {
-		panic(fmt.Errorf("解析区块链信息失败: %w", err))
+		return 0, fmt.Errorf("解析区块链信息失败: %w", err)
 	}
 
+	var totalTransactionCount uint64 = 0
 	blockchainHeight := chainInfo.Height
-	fmt.Printf("当前区块高度为: %d\n", blockchainHeight)
-	return int(blockchainHeight)
+
+	// 遍历所有区块统计交易数量
+	for blockNumber := uint64(0); blockNumber < blockchainHeight; blockNumber++ {
+		// 复用EvaluateTransaction获取区块数据
+		blockBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetBlockByNumber", channelName, fmt.Sprint(blockNumber))
+		if err != nil {
+			return totalTransactionCount, fmt.Errorf("获取区块%d失败: %w", blockNumber, err)
+		}
+
+		var block common.Block
+		if err := proto.Unmarshal(blockBytes, &block); err != nil {
+			return totalTransactionCount, fmt.Errorf("解析区块%d失败: %w", blockNumber, err)
+		}
+
+		totalTransactionCount += uint64(len(block.Data.Data))
+	}
+
+	return totalTransactionCount, nil
 }
 
-// 获取组织数
-func GetOrganizationCount(gw *client.Gateway, channelName string) (int, error) {
-	network := gw.GetNetwork(channelName)
-	csccContract := network.GetContract("cscc")
-	fmt.Println("\n--> 正在获取通道组织数量...")
-
-	// 1. 调用CSCC的GetConfigBlock方法获取配置区块
-	configBlockBytes, err := csccContract.EvaluateTransaction("GetConfigBlock", channelName)
+// GetBlockHeight 返回通道的当前区块高度
+func GetBlockHeight(gw *client.Gateway, channelName string) (uint64, error) {
+	// 复用EvaluateTransaction获取区块链信息
+	chainInfoBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetChainInfo", channelName)
 	if err != nil {
-		return 0, fmt.Errorf("调用CSCC获取配置区块失败: %w", err)
+		return 0, fmt.Errorf("获取区块链信息失败: %w", err)
 	}
 
-	// 2. 反序列化配置区块
+	var chainInfo common.BlockchainInfo
+	if err := proto.Unmarshal(chainInfoBytes, &chainInfo); err != nil {
+		return 0, fmt.Errorf("解析区块链信息失败: %w", err)
+	}
+
+	return chainInfo.Height, nil
+}
+
+// GetOrganizationCount 返回通道中的组织数量
+func GetOrganizationCount(gw *client.Gateway, channelName string) (int, error) {
+	// 复用EvaluateTransaction获取配置区块
+	configBlockBytes, err := EvaluateTransaction(gw, channelName, "cscc", "GetConfigBlock", channelName)
+	if err != nil {
+		return 0, fmt.Errorf("获取配置区块失败: %w", err)
+	}
+
 	var configBlock common.Block
 	if err := proto.Unmarshal(configBlockBytes, &configBlock); err != nil {
 		return 0, fmt.Errorf("解析配置区块失败: %w", err)
 	}
 
-	// 3. 从区块数据中提取通道配置
 	if len(configBlock.Data.Data) == 0 {
-		return 0, fmt.Errorf("配置区块中没有数据")
+		return 0, fmt.Errorf("配置区块数据为空")
 	}
 
 	var envelope common.Envelope
@@ -253,20 +236,15 @@ func GetOrganizationCount(gw *client.Gateway, channelName string) (int, error) {
 		return 0, fmt.Errorf("解析ConfigEnvelope失败: %w", err)
 	}
 
-	// 4. 从通道配置中提取组织信息
 	channelGroup := configEnvelope.Config.ChannelGroup
 	if channelGroup == nil {
 		return 0, fmt.Errorf("配置中缺少ChannelGroup")
 	}
 
-	// 检查是否是应用通道（Application）或系统通道（Consortium）
 	var orgsGroup *common.ConfigGroup
 	if appGroup, exists := channelGroup.Groups["Application"]; exists {
-		// 应用通道的组织在Application.groups下
 		orgsGroup = appGroup
 	} else if consortiumGroup, exists := channelGroup.Groups["Consortiums"]; exists {
-		// 系统通道的组织在Consortiums.groups下
-		// 注意：系统通道可能有多个联盟，这里取第一个联盟的组织
 		for _, consortium := range consortiumGroup.Groups {
 			orgsGroup = consortium
 			break
@@ -279,18 +257,14 @@ func GetOrganizationCount(gw *client.Gateway, channelName string) (int, error) {
 		return 0, fmt.Errorf("配置中缺少组织信息")
 	}
 
-	// 5. 统计组织数量
-	orgCount := len(orgsGroup.Groups)
-	fmt.Printf("通道 '%s' 中的组织数量为: %d\n", channelName, orgCount)
-
-	return orgCount, nil
+	return len(orgsGroup.Groups), nil
 }
 
-// Format JSON data
-func formatJSON(data []byte) string {
+// FormatJSON 格式化JSON数据
+func FormatJSON(data []byte) (string, error) {
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, data, "", "  "); err != nil {
-		panic(fmt.Errorf("failed to parse JSON: %w", err))
+		return "", fmt.Errorf("格式化JSON失败: %w", err)
 	}
-	return prettyJSON.String()
+	return prettyJSON.String(), nil
 }
