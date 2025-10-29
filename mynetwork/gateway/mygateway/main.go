@@ -40,18 +40,23 @@ func main() {
 	// fmt.Printf("value:%v", v)
 
 	// 以下为admin-sdk
-	peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
-	if err != nil {
-		panic(err)
-	}
+	// peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	// v, err := peer.QueryInstalled(context.Background())
 	// if err != nil {
 	// 	panic(err)
 	// }
 	// fmt.Print(len(v.InstalledChaincodes))
-	v, err := peer.PeerMembershipQuery(context.Background(), channelName, nil)
+	// v, err := peer.PeerMembershipQuery(context.Background(), channelName, nil)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Printf("%v\n", len(v.PeersByOrg))
+	v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%v\n", len(v.PeersByOrg))
+	fmt.Println(v)
 }
