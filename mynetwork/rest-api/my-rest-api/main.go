@@ -63,7 +63,7 @@ func main() {
 
 	r.GET("/valuechain", getValueChainInfo)
 	r.GET("/valuechain/getBlockByPage", getBlockListByPage)
-
+	r.GET("/valuechain/getBlockByNum", getBlockByNum)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -144,6 +144,25 @@ func getBlockListByPage(c *gin.Context) {
 	response, err := gateway.GetBlockListByPage(gw, channelName, pageNum, pageSize, true)
 	if err != nil {
 		fmt.Println("获取BlockList错误,%w", err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
+
+}
+
+// func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*BlockInfo, error) {
+func getBlockByNum(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	blockNumStr := c.DefaultQuery("blockNum", "0")
+	blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
+	if err != nil {
+		fmt.Println("转换错误:", err)
+		return
+	}
+	response, err := gateway.GetBlockByNum(gw, channelName, blockNum)
+	if err != nil {
+		fmt.Println("获取Block错误,%w", err)
 		return
 	}
 	c.JSON(http.StatusOK, response)

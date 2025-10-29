@@ -419,11 +419,21 @@ func extractCreatorFromSignature(signatureHeaderBytes []byte) string {
 	return ""
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+// 根据区块号获取区块详情
+func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*BlockInfo, error) {
+	// 复用EvaluateTransaction获取区块数据
+	blockBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetBlockByNumber", channelName, fmt.Sprint(blockNum))
+	if err != nil {
+		return nil, fmt.Errorf("获取区块%d失败: %w", blockNum, err)
 	}
-	return b
+
+	// 复用parseBlockInfo函数解析区块信息
+	blockInfo, err := parseBlockInfo(blockBytes, blockNum, channelName, true) // 默认包含交易详情
+	if err != nil {
+		return nil, fmt.Errorf("解析区块%d失败: %w", blockNum, err)
+	}
+
+	return blockInfo, nil
 }
 
 // =============end
