@@ -1072,7 +1072,7 @@
                 document.getElementById('memoryNodeCards').innerHTML = '<p>无法加载内存数据，请确保监控服务正在运行。</p>';
             }
         }
-        // 创建CPU使用率图表（自适应Y轴）
+        // 创建CPU使用率图表（自适应Y轴，最小刻度2%）
         function createCPUChart(nodeName, dataToDisplay) {
             const ctx = document.getElementById(`cpu-chart-${nodeName}`).getContext('2d');
 
@@ -1094,6 +1094,19 @@
             const dataRange = maxValue - minValue;
             const finalYAxisMax = dataRange < 5 ? Math.min(100, maxValue + 5) : yAxisMax;
             const finalYAxisMin = dataRange < 5 ? Math.max(0, minValue - 5) : yAxisMin;
+
+            // 计算合适的步长，确保最小刻度为2%
+            const range = finalYAxisMax - finalYAxisMin;
+            let stepSize = 2; // 默认步长为2%
+
+            // 如果范围较大，适当增加步长
+            if (range > 20) {
+                stepSize = 5;
+            } else if (range > 40) {
+                stepSize = 10;
+            } else if (range > 80) {
+                stepSize = 20;
+            }
 
             // 如果已存在图表，先销毁
             if (cpuCharts[nodeName]) {
@@ -1124,10 +1137,11 @@
                             min: finalYAxisMin,
                             max: finalYAxisMax,
                             ticks: {
+                                stepSize: stepSize, // 设置刻度步长
                                 callback: function (value) {
-                                    return value + '%';
+                                    // 确保显示整数刻度值
+                                    return Number.isInteger(value) ? value + '%' : '';
                                 },
-                                // 自动调整刻度密度
                                 autoSkip: true,
                                 maxTicksLimit: 8
                             },
@@ -1152,7 +1166,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function (context) {
-                                    return `CPU使用率: ${context.parsed.y}%`;
+                                    return `CPU使用率: ${context.parsed.y.toFixed(2)}%`;
                                 }
                             }
                         }
@@ -1161,7 +1175,7 @@
             });
         }
 
-        // 创建内存使用率图表（自适应Y轴）
+        // 创建内存使用率图表（自适应Y轴，最小刻度2%）
         function createMemoryChart(nodeName, dataToDisplay) {
             const ctx = document.getElementById(`memory-chart-${nodeName}`).getContext('2d');
 
@@ -1185,6 +1199,19 @@
             const dataRange = maxValue - minValue;
             const finalYAxisMax = dataRange < 5 ? Math.min(100, maxValue + 5) : yAxisMax;
             const finalYAxisMin = dataRange < 5 ? Math.max(0, minValue - 5) : yAxisMin;
+
+            // 计算合适的步长，确保最小刻度为2%
+            const range = finalYAxisMax - finalYAxisMin;
+            let stepSize = 2; // 默认步长为2%
+
+            // 如果范围较大，适当增加步长
+            if (range > 20) {
+                stepSize = 5;
+            } else if (range > 40) {
+                stepSize = 10;
+            } else if (range > 80) {
+                stepSize = 20;
+            }
 
             // 如果已存在图表，先销毁
             if (memoryCharts[nodeName]) {
@@ -1215,8 +1242,10 @@
                             min: finalYAxisMin,
                             max: finalYAxisMax,
                             ticks: {
+                                stepSize: stepSize, // 设置刻度步长
                                 callback: function (value) {
-                                    return value + '%';
+                                    // 确保显示整数刻度值
+                                    return Number.isInteger(value) ? value + '%' : '';
                                 },
                                 autoSkip: true,
                                 maxTicksLimit: 8
@@ -1242,7 +1271,7 @@
                         tooltip: {
                             callbacks: {
                                 label: function (context) {
-                                    return `内存使用率: ${context.parsed.y}%`;
+                                    return `内存使用率: ${context.parsed.y.toFixed(2)}%`;
                                 }
                             }
                         }
@@ -1250,6 +1279,93 @@
                 }
             });
         }
+        const ctx = document.getElementById(`memory-chart-${nodeName}`).getContext('2d');
+
+        // 准备图表数据
+        const labels = dataToDisplay.map(data =>
+            new Date(data.Timestamp).toLocaleTimeString()
+        );
+        const dataPoints = dataToDisplay.map(data =>
+            ((data.UsedMemory / data.TotalMemory) * 100).toFixed(2)
+        );
+
+        // 计算数据的最大值和最小值，用于自适应Y轴
+        const maxValue = Math.max(...dataPoints);
+        const minValue = Math.min(...dataPoints);
+
+        // 设置Y轴范围，添加一些边距
+        const yAxisMax = Math.min(100, Math.ceil(maxValue + (maxValue - minValue) * 0.2));
+        const yAxisMin = Math.max(0, Math.floor(minValue - (maxValue - minValue) * 0.1));
+
+        // 如果数据变化很小，设置一个最小范围
+        const dataRange = maxValue - minValue;
+        const finalYAxisMax = dataRange < 5 ? Math.min(100, maxValue + 5) : yAxisMax;
+        const finalYAxisMin = dataRange < 5 ? Math.max(0, minValue - 5) : yAxisMin;
+
+        // 如果已存在图表，先销毁
+        if (memoryCharts[nodeName]) {
+            memoryCharts[nodeName].destroy();
+        }
+
+        // 创建新图表
+        memoryCharts[nodeName] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '内存使用率 (%)',
+                    data: dataPoints,
+                    borderColor: '#d81b60',
+                    backgroundColor: 'rgba(216, 27, 96, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: dataToDisplay.length < 50 ? 3 : 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: finalYAxisMin,
+                        max: finalYAxisMax,
+                        ticks: {
+                            callback: function (value) {
+                                return value + '%';
+                            },
+                            autoSkip: true,
+                            maxTicksLimit: 8
+                        },
+                        title: {
+                            display: true,
+                            text: '使用率 (%)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return `内存使用率: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
 
         // 显示主页
         function showHomePage() {

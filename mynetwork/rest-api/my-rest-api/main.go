@@ -48,7 +48,7 @@ func main() {
 		panic(err)
 	}
 
-	containerNames := []string{"peer0.guolong.com", "peer1.guolong.com", "peer2.guolong.com"}
+	containerNames := []string{"peer0.guolong.com", "peer1.guolong.com", "peer2.guolong.com", "orderer.guolong.com"}
 
 	err = docker.GetCpuHistoryByContainerNames(containerNames)
 	if err != nil {
