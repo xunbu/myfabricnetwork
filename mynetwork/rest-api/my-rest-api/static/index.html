@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>区块链浏览器</title>
+    <!-- 引入Chart.js用于绘制CPU使用率图表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
+
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -67,7 +70,7 @@
             transition: background-color 0.3s;
         }
         
-        nav ul li a:hover {
+        nav ul li a:hover, nav ul li a.active {
             background-color: rgba(255, 255, 255, 0.1);
         }
         
@@ -303,6 +306,79 @@
             font-weight: 600;
         }
         
+        /* 节点监控页面样式 */
+        .nodes-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .node-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 2rem;
+        }
+        
+        .node-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .node-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .node-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1a237e;
+            margin-bottom: 1rem;
+        }
+        
+        .cpu-usage {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .cpu-low { color: #4caf50; }
+        .cpu-medium { color: #ff9800; }
+        .cpu-high { color: #f44336; }
+        
+        .cpu-chart-container {
+            height: 200px;
+            margin-top: 1rem;
+        }
+        
+        .refresh-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .refresh-button {
+            background: #1a237e;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .refresh-button:hover {
+            background: #283593;
+        }
+        
         /* 响应式设计 */
         @media (max-width: 768px) {
             .header-content {
@@ -327,6 +403,10 @@
             .detail-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .node-cards {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -342,10 +422,10 @@
                     </div>
                     <nav>
                         <ul>
-                            <li><a href="#" class="active">首页</a></li>
+                            <li><a href="#" class="nav-link active" data-page="home">首页</a></li>
+                            <li><a href="#" class="nav-link" data-page="nodes">节点监控</a></li>
                             <li><a href="#">交易</a></li>
                             <li><a href="#">链码</a></li>
-                            <li><a href="#">节点</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -409,7 +489,7 @@
 
         <footer>
             <div class="container">
-                <p>区块链浏览器 &copy; 2023 - 基于Hyperledger Fabric</p>
+                <p>区块链浏览器 &copy; 2025</p>
             </div>
         </footer>
     </div>
@@ -497,11 +577,69 @@
         </footer>
     </div>
 
+    <!-- 节点监控页面（初始隐藏） -->
+    <div id="nodes-page" style="display: none;">
+        <header>
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <span class="logo-icon">⛓️</span>
+                        <span>节点监控</span>
+                    </div>
+                    <nav>
+                        <ul>
+                            <li><a href="#" class="nav-link" data-page="home">返回首页</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <section class="dashboard">
+                <h2 class="section-title">节点CPU使用率监控</h2>
+                
+                <div class="refresh-controls">
+                    <div>
+                        <span>时间范围: </span>
+                        <label><input type="radio" name="timeRange" value="1" checked> 1分钟</label>
+                        <label><input type="radio" name="timeRange" value="5"> 5分钟</label>
+                        <label><input type="radio" name="timeRange" value="30"> 30分钟</label>
+                    </div>
+                    <div>
+                        <span>自动刷新: </span>
+                        <label><input type="radio" name="refresh" value="5" checked> 5秒</label>
+                        <label><input type="radio" name="refresh" value="10"> 10秒</label>
+                        <label><input type="radio" name="refresh" value="30"> 30秒</label>
+                        <label><input type="radio" name="refresh" value="0"> 关闭</label>
+                    </div>
+                    <button class="refresh-button" id="manualRefresh">手动刷新</button>
+                </div>
+                
+                <div class="nodes-section">
+                    <div class="node-cards" id="nodeCards">
+                        <!-- 节点数据将通过JavaScript动态加载 -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="container">
+                <p>区块链浏览器 &copy; 2025</p>
+            </div>
+        </footer>
+    </div>
+
     <script>
         // 全局变量
         let currentPage = 0;
         const pageSize = 10;
         let blockHeight = 0;
+        let cpuCharts = {};
+        let refreshInterval = null;
+        let currentRefreshRate = 5; // 默认5秒刷新
+        let currentTimeRange = 1; // 默认1分钟
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -534,7 +672,79 @@
                 e.preventDefault();
                 showHomePage();
             });
+            
+            // 导航链接事件
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    showPage(page);
+                });
+            });
+            
+            // 手动刷新按钮
+            document.getElementById('manualRefresh').addEventListener('click', function() {
+                loadCPUData();
+            });
+            
+            // 自动刷新设置
+            document.querySelectorAll('input[name="refresh"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    currentRefreshRate = parseInt(this.value);
+                    setupAutoRefresh();
+                });
+            });
+
+            // 时间范围选择
+            document.querySelectorAll('input[name="timeRange"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    currentTimeRange = parseInt(this.value);
+                    loadCPUData(); // 使用新范围重新加载数据
+                });
+            });
+            
+            // 初始化自动刷新
+            setupAutoRefresh();
         });
+
+        // 设置自动刷新
+        function setupAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+            
+            if (currentRefreshRate > 0) {
+                refreshInterval = setInterval(() => {
+                    if (document.getElementById('nodes-page').style.display !== 'none') {
+                        loadCPUData();
+                    }
+                }, currentRefreshRate * 1000);
+            }
+        }
+
+        // 显示指定页面
+        function showPage(page) {
+            // 隐藏所有页面
+            document.getElementById('home-page').style.display = 'none';
+            document.getElementById('block-detail-page').style.display = 'none';
+            document.getElementById('nodes-page').style.display = 'none';
+            
+            // 更新导航激活状态
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            if (page === 'home') {
+                document.getElementById('home-page').style.display = 'block';
+                document.querySelector('.nav-link[data-page="home"]').classList.add('active');
+            } else if (page === 'nodes') {
+                document.getElementById('nodes-page').style.display = 'block';
+                document.querySelector('.nav-link[data-page="nodes"]').classList.add('active');
+                loadCPUData();
+            }
+        }
 
         // 加载概览数据
         async function loadOverviewData() {
@@ -606,19 +816,16 @@
                 document.getElementById('detail-blockNumber').textContent = block.blockNumber;
                 document.getElementById('detail-blockHash').textContent = block.blockHash;
                 document.getElementById('detail-previousHash').textContent = block.previousHash;
-                // [修改] 后端返回 dataHash
                 document.getElementById('detail-dataHash').textContent = block.dataHash;
                 document.getElementById('detail-txCount').textContent = block.txCount;
                 document.getElementById('detail-blockSize').textContent = formatBytes(block.blockSize);
                 document.getElementById('detail-timestamp').textContent = new Date(block.timestamp).toLocaleString();
-                // [修改] 后端返回 channelId
                 document.getElementById('detail-channelId').textContent = block.channelId;
                 
                 // 填充交易列表
                 const transactionList = document.getElementById('transactionList');
                 transactionList.innerHTML = '';
                 
-                // [修改] 后端返回 txIds
                 if (block.txIds && block.txIds.length > 0) {
                     block.txIds.forEach(txId => {
                         const li = document.createElement('li');
@@ -640,16 +847,139 @@
             }
         }
 
+        // 加载CPU使用率数据
+        async function loadCPUData() {
+            try {
+                const response = await fetch('/valuechain/getCpuHistory');
+                const cpuData = await response.json();
+                
+                const nodeCards = document.getElementById('nodeCards');
+                nodeCards.innerHTML = '';
+
+                const now = Date.now();
+                const startTime = now - (currentTimeRange * 60 * 1000);
+                
+                // 处理每个节点的数据
+                Object.keys(cpuData).forEach(nodeName => {
+                    const nodeData = cpuData[nodeName];
+                    if (nodeData.length === 0) return;
+                    
+                    // 过滤数据以匹配所选时间范围
+                    const filteredData = nodeData.filter(d => new Date(d.Timestamp).getTime() >= startTime);
+
+                    // 获取最新的CPU使用率（来自未经过滤的数据）
+                    const latestData = nodeData[nodeData.length - 1];
+                    const cpuUsage = latestData.CPUUsage.toFixed(2);
+                    
+                    // 根据CPU使用率设置颜色
+                    let cpuClass = 'cpu-low';
+                    if (cpuUsage > 50) cpuClass = 'cpu-medium'; // 调整阈值以获得更好的可视化效果
+                    if (cpuUsage > 80) cpuClass = 'cpu-high';
+                    
+                    // 创建节点卡片
+                    const nodeCard = document.createElement('div');
+                    nodeCard.className = 'node-card';
+                    nodeCard.innerHTML = `
+                        <div class="node-name">${nodeName}</div>
+                        <div class="cpu-usage ${cpuClass}">${cpuUsage}%</div>
+                        <div>最新更新时间: ${new Date(latestData.Timestamp).toLocaleString()}</div>
+                        <div class="cpu-chart-container">
+                            <canvas id="chart-${nodeName}"></canvas>
+                        </div>
+                    `;
+                    
+                    nodeCards.appendChild(nodeCard);
+                    
+                    // 使用过滤后的数据创建图表
+                    createCPUChart(nodeName, filteredData);
+                });
+            } catch (error) {
+                console.error('加载CPU数据失败:', error);
+                document.getElementById('nodeCards').innerHTML = '<p>无法加载节点数据，请确保监控服务正在运行。</p>';
+            }
+        }
+
+        // 创建CPU使用率图表
+        function createCPUChart(nodeName, dataToDisplay) {
+            const ctx = document.getElementById(`chart-${nodeName}`).getContext('2d');
+            
+            // 准备图表数据
+            const labels = dataToDisplay.map(data => 
+                new Date(data.Timestamp).toLocaleTimeString()
+            );
+            const data = dataToDisplay.map(data => data.CPUUsage.toFixed(2));
+            
+            // 如果已存在图表，先销毁
+            if (cpuCharts[nodeName]) {
+                cpuCharts[nodeName].destroy();
+            }
+            
+            // 创建新图表
+            cpuCharts[nodeName] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'CPU使用率 (%)',
+                        data: data,
+                        borderColor: '#1a237e',
+                        backgroundColor: 'rgba(26, 35, 126, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: dataToDisplay.length < 50 ? 3 : 0, // 点太多时隐藏点
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                // 自动跳过标签以避免重叠
+                                autoSkip: true,
+                                maxTicksLimit: 10 
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
         // 显示主页
         function showHomePage() {
             document.getElementById('home-page').style.display = 'block';
             document.getElementById('block-detail-page').style.display = 'none';
+            document.getElementById('nodes-page').style.display = 'none';
+            
+            // 更新导航激活状态
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector('.nav-link[data-page="home"]').classList.add('active');
         }
 
         // 显示区块详情页面
         function showBlockDetailPage() {
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('block-detail-page').style.display = 'block';
+            document.getElementById('nodes-page').style.display = 'none';
         }
 
         // 格式化字节大小

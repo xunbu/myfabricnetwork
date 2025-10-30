@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"guolong.com/fabric-gateway/admin"
 	"guolong.com/fabric-gateway/gateway"
+	"guolong.com/fabric-rest-api/docker"
 )
 
 const (
@@ -47,6 +48,18 @@ func main() {
 		panic(err)
 	}
 
+	containerNames := []string{"peer0.guolong.com", "peer1.guolong.com", "peer2.guolong.com"}
+
+	err = docker.GetCpuHistoryByContainerNames(containerNames)
+	if err != nil {
+		fmt.Printf("❌ 启动监控失败: %v\n", err)
+		fmt.Println("💡 提示: 请确保这些容器正在运行")
+		return
+	}
+
+	defer docker.StopMonitoring()
+	defer docker.ClearAllHistory()
+
 	r := gin.Default()
 	r.Static("/static", "./static")
 	r.GET("/", func(c *gin.Context) {
@@ -64,6 +77,7 @@ func main() {
 	r.GET("/valuechain", getValueChainInfo)
 	r.GET("/valuechain/getBlockByPage", getBlockListByPage)
 	r.GET("/valuechain/getBlockByNum", getBlockByNum)
+	r.GET("/valuechain/getCpuHistory", getCpuHistory)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -167,4 +181,15 @@ func getBlockByNum(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, response)
 
+}
+
+func getCpuHistory(c *gin.Context) {
+	//func docker.GetAllCPUHistory() map[string][]docker.CPUMetric
+	//type CPUMetric struct {
+	// 	Timestamp time.Time
+	// 	CPUUsage  float64 (百分比数字，如5.0表示5%)
+	// }
+	// 默认每两秒获取一次数据，最多一个容器存储1000条cpu记录
+	allHistory := docker.GetAllCPUHistory()
+	c.JSON(http.StatusOK, allHistory)
 }
