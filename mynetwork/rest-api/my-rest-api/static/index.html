@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
-
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -341,7 +340,7 @@
             margin-bottom: 1rem;
         }
         
-        .cpu-usage {
+        .cpu-usage, .memory-usage {
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
@@ -351,7 +350,11 @@
         .cpu-medium { color: #ff9800; }
         .cpu-high { color: #f44336; }
         
-        .cpu-chart-container {
+        .memory-low { color: #4caf50; }
+        .memory-medium { color: #ff9800; }
+        .memory-high { color: #f44336; }
+        
+        .chart-container {
             height: 200px;
             margin-top: 1rem;
         }
@@ -377,6 +380,36 @@
         
         .refresh-button:hover {
             background: #283593;
+        }
+        
+        .tab-container {
+            margin-bottom: 1.5rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-bottom-color: #1a237e;
+            color: #1a237e;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
         }
         
         /* 响应式设计 */
@@ -406,6 +439,11 @@
             
             .node-cards {
                 grid-template-columns: 1fr;
+            }
+            
+            .refresh-controls {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -597,7 +635,7 @@
 
         <main class="container">
             <section class="dashboard">
-                <h2 class="section-title">节点CPU使用率监控</h2>
+                <h2 class="section-title">节点资源监控</h2>
                 
                 <div class="refresh-controls">
                     <div>
@@ -616,9 +654,26 @@
                     <button class="refresh-button" id="manualRefresh">手动刷新</button>
                 </div>
                 
-                <div class="nodes-section">
-                    <div class="node-cards" id="nodeCards">
-                        <!-- 节点数据将通过JavaScript动态加载 -->
+                <div class="tab-container">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="cpu">CPU监控</div>
+                        <div class="tab" data-tab="memory">内存监控</div>
+                    </div>
+                </div>
+                
+                <div class="tab-content active" id="cpu-tab">
+                    <div class="nodes-section">
+                        <div class="node-cards" id="cpuNodeCards">
+                            <!-- CPU节点数据将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="memory-tab">
+                    <div class="nodes-section">
+                        <div class="node-cards" id="memoryNodeCards">
+                            <!-- 内存节点数据将通过JavaScript动态加载 -->
+                        </div>
                     </div>
                 </div>
             </section>
@@ -637,9 +692,11 @@
         const pageSize = 10;
         let blockHeight = 0;
         let cpuCharts = {};
+        let memoryCharts = {};
         let refreshInterval = null;
         let currentRefreshRate = 5; // 默认5秒刷新
         let currentTimeRange = 1; // 默认1分钟
+        let currentTab = 'cpu'; // 默认显示CPU监控
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -684,7 +741,11 @@
             
             // 手动刷新按钮
             document.getElementById('manualRefresh').addEventListener('click', function() {
-                loadCPUData();
+                if (currentTab === 'cpu') {
+                    loadCPUData();
+                } else {
+                    loadMemoryData();
+                }
             });
             
             // 自动刷新设置
@@ -699,13 +760,49 @@
             document.querySelectorAll('input[name="timeRange"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     currentTimeRange = parseInt(this.value);
-                    loadCPUData(); // 使用新范围重新加载数据
+                    if (currentTab === 'cpu') {
+                        loadCPUData();
+                    } else {
+                        loadMemoryData();
+                    }
+                });
+            });
+            
+            // 标签页切换
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    switchTab(tabId);
                 });
             });
             
             // 初始化自动刷新
             setupAutoRefresh();
         });
+
+        // 切换标签页
+        function switchTab(tabId) {
+            currentTab = tabId;
+            
+            // 更新标签页样式
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            
+            // 显示对应内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            
+            // 加载对应数据
+            if (tabId === 'cpu') {
+                loadCPUData();
+            } else {
+                loadMemoryData();
+            }
+        }
 
         // 设置自动刷新
         function setupAutoRefresh() {
@@ -717,7 +814,11 @@
             if (currentRefreshRate > 0) {
                 refreshInterval = setInterval(() => {
                     if (document.getElementById('nodes-page').style.display !== 'none') {
-                        loadCPUData();
+                        if (currentTab === 'cpu') {
+                            loadCPUData();
+                        } else {
+                            loadMemoryData();
+                        }
                     }
                 }, currentRefreshRate * 1000);
             }
@@ -850,10 +951,10 @@
         // 加载CPU使用率数据
         async function loadCPUData() {
             try {
-                const response = await fetch('/valuechain/getCpuHistory');
+                const response = await fetch('/valuechain/cpuHistory');
                 const cpuData = await response.json();
                 
-                const nodeCards = document.getElementById('nodeCards');
+                const nodeCards = document.getElementById('cpuNodeCards');
                 nodeCards.innerHTML = '';
 
                 const now = Date.now();
@@ -873,7 +974,7 @@
                     
                     // 根据CPU使用率设置颜色
                     let cpuClass = 'cpu-low';
-                    if (cpuUsage > 50) cpuClass = 'cpu-medium'; // 调整阈值以获得更好的可视化效果
+                    if (cpuUsage > 50) cpuClass = 'cpu-medium';
                     if (cpuUsage > 80) cpuClass = 'cpu-high';
                     
                     // 创建节点卡片
@@ -883,8 +984,8 @@
                         <div class="node-name">${nodeName}</div>
                         <div class="cpu-usage ${cpuClass}">${cpuUsage}%</div>
                         <div>最新更新时间: ${new Date(latestData.Timestamp).toLocaleString()}</div>
-                        <div class="cpu-chart-container">
-                            <canvas id="chart-${nodeName}"></canvas>
+                        <div class="chart-container">
+                            <canvas id="cpu-chart-${nodeName}"></canvas>
                         </div>
                     `;
                     
@@ -895,13 +996,66 @@
                 });
             } catch (error) {
                 console.error('加载CPU数据失败:', error);
-                document.getElementById('nodeCards').innerHTML = '<p>无法加载节点数据，请确保监控服务正在运行。</p>';
+                document.getElementById('cpuNodeCards').innerHTML = '<p>无法加载CPU数据，请确保监控服务正在运行。</p>';
+            }
+        }
+
+        // 加载内存使用率数据
+        async function loadMemoryData() {
+            try {
+                const response = await fetch('/valuechain/memoryHistory');
+                const memoryData = await response.json();
+                
+                const nodeCards = document.getElementById('memoryNodeCards');
+                nodeCards.innerHTML = '';
+
+                const now = Date.now();
+                const startTime = now - (currentTimeRange * 60 * 1000);
+                
+                // 处理每个节点的数据
+                Object.keys(memoryData).forEach(nodeName => {
+                    const nodeData = memoryData[nodeName];
+                    if (nodeData.length === 0) return;
+                    
+                    // 过滤数据以匹配所选时间范围
+                    const filteredData = nodeData.filter(d => new Date(d.Timestamp).getTime() >= startTime);
+
+                    // 获取最新的内存使用率（来自未经过滤的数据）
+                    const latestData = nodeData[nodeData.length - 1];
+                    const memoryUsagePercent = ((latestData.UsedMemory / latestData.TotalMemory) * 100).toFixed(2);
+                    
+                    // 根据内存使用率设置颜色
+                    let memoryClass = 'memory-low';
+                    if (memoryUsagePercent > 70) memoryClass = 'memory-medium';
+                    if (memoryUsagePercent > 90) memoryClass = 'memory-high';
+                    
+                    // 创建节点卡片
+                    const nodeCard = document.createElement('div');
+                    nodeCard.className = 'node-card';
+                    nodeCard.innerHTML = `
+                        <div class="node-name">${nodeName}</div>
+                        <div class="memory-usage ${memoryClass}">${memoryUsagePercent}%</div>
+                        <div>已用内存: ${formatBytes(latestData.UsedMemory)} / ${formatBytes(latestData.TotalMemory)}</div>
+                        <div>最新更新时间: ${new Date(latestData.Timestamp).toLocaleString()}</div>
+                        <div class="chart-container">
+                            <canvas id="memory-chart-${nodeName}"></canvas>
+                        </div>
+                    `;
+                    
+                    nodeCards.appendChild(nodeCard);
+                    
+                    // 使用过滤后的数据创建图表
+                    createMemoryChart(nodeName, filteredData);
+                });
+            } catch (error) {
+                console.error('加载内存数据失败:', error);
+                document.getElementById('memoryNodeCards').innerHTML = '<p>无法加载内存数据，请确保监控服务正在运行。</p>';
             }
         }
 
         // 创建CPU使用率图表
         function createCPUChart(nodeName, dataToDisplay) {
-            const ctx = document.getElementById(`chart-${nodeName}`).getContext('2d');
+            const ctx = document.getElementById(`cpu-chart-${nodeName}`).getContext('2d');
             
             // 准备图表数据
             const labels = dataToDisplay.map(data => 
@@ -948,6 +1102,70 @@
                                 maxRotation: 45,
                                 minRotation: 45,
                                 // 自动跳过标签以避免重叠
+                                autoSkip: true,
+                                maxTicksLimit: 10 
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 创建内存使用率图表
+        function createMemoryChart(nodeName, dataToDisplay) {
+            const ctx = document.getElementById(`memory-chart-${nodeName}`).getContext('2d');
+            
+            // 准备图表数据
+            const labels = dataToDisplay.map(data => 
+                new Date(data.Timestamp).toLocaleTimeString()
+            );
+            const data = dataToDisplay.map(data => 
+                ((data.UsedMemory / data.TotalMemory) * 100).toFixed(2)
+            );
+            
+            // 如果已存在图表，先销毁
+            if (memoryCharts[nodeName]) {
+                memoryCharts[nodeName].destroy();
+            }
+            
+            // 创建新图表
+            memoryCharts[nodeName] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '内存使用率 (%)',
+                        data: data,
+                        borderColor: '#d81b60',
+                        backgroundColor: 'rgba(216, 27, 96, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: dataToDisplay.length < 50 ? 3 : 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
                                 autoSkip: true,
                                 maxTicksLimit: 10 
                             }

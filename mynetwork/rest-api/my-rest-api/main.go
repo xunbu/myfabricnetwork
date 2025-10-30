@@ -52,8 +52,12 @@ func main() {
 
 	err = docker.GetCpuHistoryByContainerNames(containerNames)
 	if err != nil {
-		fmt.Printf("❌ 启动监控失败: %v\n", err)
-		fmt.Println("💡 提示: 请确保这些容器正在运行")
+		fmt.Printf("启动cpu监控失败: %v\n", err)
+		return
+	}
+	err = docker.GetMemoryHistoryByContainerNames(containerNames)
+	if err != nil {
+		fmt.Printf("启动内存监控失败: %v\n", err)
 		return
 	}
 
@@ -77,7 +81,8 @@ func main() {
 	r.GET("/valuechain", getValueChainInfo)
 	r.GET("/valuechain/getBlockByPage", getBlockListByPage)
 	r.GET("/valuechain/getBlockByNum", getBlockByNum)
-	r.GET("/valuechain/getCpuHistory", getCpuHistory)
+	r.GET("/valuechain/cpuHistory", getCpuHistory)
+	r.GET("/valuechain/memoryHistory", getMemoryHistory)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -191,5 +196,17 @@ func getCpuHistory(c *gin.Context) {
 	// }
 	// 默认每两秒获取一次数据，最多一个容器存储1000条cpu记录
 	allHistory := docker.GetAllCPUHistory()
+	c.JSON(http.StatusOK, allHistory)
+}
+
+func getMemoryHistory(c *gin.Context) {
+	// func docker.GetAllMemoryHistory() map[string][]docker.MemoryMetric
+	// MemoryMetric 存储单个时间点的内存使用情况
+	// type MemoryMetric struct {
+	// 	Timestamp   time.Time
+	// 	UsedMemory  uint64 // 已使用内存(字节)
+	// 	TotalMemory uint64 // 总内存限制(字节)
+	// }
+	allHistory := docker.GetAllMemoryHistory()
 	c.JSON(http.StatusOK, allHistory)
 }
