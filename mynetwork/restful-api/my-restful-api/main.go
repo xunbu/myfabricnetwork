@@ -83,6 +83,7 @@ func main() {
 	r.GET("/valuechain/getBlockByNum", getBlockByNum)
 	r.GET("/valuechain/cpuHistory", getCpuHistory)
 	r.GET("/valuechain/memoryHistory", getMemoryHistory)
+	r.GET("/valuechain/getAllData", getAllData)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -209,4 +210,21 @@ func getMemoryHistory(c *gin.Context) {
 	// }
 	allHistory := docker.GetAllMemoryHistory()
 	c.JSON(http.StatusOK, allHistory)
+}
+
+func getAllData(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	// func gateway.GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error)
+	// 	type QueryRichResult struct {
+	// 	Key    string      `json:"key"`
+	// 	Value  interface{} `json:"value"`//Value有string和json([]byte)两种
+	// 	IsJSON bool        `json:"isJson"`
+	// }
+	v, err := gateway.GetAllData(gw, channelName)
+	if err != nil {
+		return
+	}
+	c.JSON(http.StatusOK, v)
+
 }

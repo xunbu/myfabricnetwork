@@ -439,7 +439,7 @@ func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*Bl
 
 // =============end
 
-func GetAllStates(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error) {
+func GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error) {
 	v, err := EvaluateTransaction(gw, channelName, "basic", "QueryByRange", "", "")
 	if err != nil {
 		return nil, err
