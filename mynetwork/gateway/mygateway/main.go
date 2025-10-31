@@ -54,9 +54,15 @@ func main() {
 	// 	panic(err)
 	// }
 	// fmt.Printf("%v\n", len(v.PeersByOrg))
+	// v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(v)
 	v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(v)
+
 }
