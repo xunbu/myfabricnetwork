@@ -215,7 +215,18 @@ func getMemoryHistory(c *gin.Context) {
 func getAllData(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-	// func gateway.GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error)
+	// func GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error) {
+	// 	v, err := EvaluateTransaction(gw, channelName, "basic", "QueryByRange", "", "")
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	var results []chaincode.QueryRichResult
+	// 	err = json.Unmarshal(v, &results)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	return results, nil
+	// }
 	// 	type QueryRichResult struct {
 	// 	Key    string      `json:"key"`
 	// 	Value  interface{} `json:"value"`//Value有string和json([]byte)两种

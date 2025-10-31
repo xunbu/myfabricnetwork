@@ -31,11 +31,16 @@ func main() {
 	defer gw.Close()
 	channelName := "mychannel"
 	// gateway.GetTransactionCount(gw, channelName)
-	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "GetAllAssets")
-	// if err != nil {
-	// 	fmt.Println("error in EvaluateTransaction")
-	// }
-	// fmt.Printf("value:%v", v)
+	m := map[string]any{
+		"first name":  "tom",
+		"second name": "hanks",
+	}
+
+	v, err := gateway.PutJson(gw, channelName, "test", m)
+	if err != nil {
+		fmt.Printf("error in EvaluateTransaction %v", err)
+	}
+	fmt.Printf("value:%v\n", v)
 
 	// 以下为admin-sdk
 	// peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
@@ -73,14 +78,14 @@ func main() {
 	// }
 	// fmt.Println(string(v2))
 
-	v3, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKeyAsBytes", "author")
-	if err != nil {
-		panic(err)
-	}
+	// v3, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKeyAsBytes", "author")
+	// if err != nil {
+	// 	panic(err)
+	// }
 	// var v string
 	// err = json.Unmarshal(v3, &v)
 	// if err != nil {
 	// 	panic(err)
 	// }
-	fmt.Println(string(v3))
+	// fmt.Println(string(v3))
 }

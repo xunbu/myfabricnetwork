@@ -431,6 +431,145 @@
             display: block;
         }
 
+        /* 数据展示页面样式 */
+        .data-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+
+        .data-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-box input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 2px solid #e0e0e0;
+            color: #666;
+            font-weight: 600;
+            background: #f8f9fa;
+        }
+
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+
+        .data-key {
+            font-family: monospace;
+            color: #1a237e;
+            font-weight: 600;
+            max-width: 200px;
+            word-break: break-all;
+        }
+
+        .data-value {
+            max-width: 400px;
+            word-break: break-all;
+        }
+
+        .json-value {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .json-badge {
+            background: #4caf50;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* 加载状态 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a237e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        /* 错误提示 */
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #f44336;
+        }
+
         /* 主页自动刷新控制样式 */
         .home-refresh-controls {
             display: flex;
@@ -483,6 +622,15 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+
+            .data-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .search-box input {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -501,8 +649,7 @@
                         <ul>
                             <li><a href="#" class="nav-link active" data-page="home">首页</a></li>
                             <li><a href="#" class="nav-link" data-page="nodes">节点监控</a></li>
-                            <li><a href="#">交易</a></li>
-                            <li><a href="#">链码</a></li>
+                            <li><a href="#" class="nav-link" data-page="data">数据展示</a></li>
                         </ul>
                     </nav>
                 </div>
@@ -657,7 +804,7 @@
 
         <footer>
             <div class="container">
-                <p>区块链浏览器 &copy; 2023 - 基于Hyperledger Fabric</p>
+                <p>区块链浏览器 &copy; 2025 - 基于Hyperledger Fabric</p>
             </div>
         </footer>
     </div>
@@ -733,6 +880,62 @@
         </footer>
     </div>
 
+    <!-- 数据展示页面（初始隐藏） -->
+    <div id="data-page" style="display: none;">
+        <header>
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <span class="logo-icon">⛓️</span>
+                        <span>链上数据</span>
+                    </div>
+                    <nav>
+                        <ul>
+                            <li><a href="#" class="nav-link" data-page="home">返回首页</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <section class="dashboard">
+                <h2 class="section-title">链上数据展示</h2>
+
+                <div class="data-section">
+                    <div class="data-controls">
+                        <div class="search-box">
+                            <input type="text" id="dataSearch" placeholder="搜索键或值...">
+                            <button class="refresh-button" id="searchData">搜索</button>
+                        </div>
+                        <button class="refresh-button" id="refreshData">刷新数据</button>
+                    </div>
+
+                    <div id="dataTableContainer">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>键</th>
+                                    <th>值</th>
+                                    <th>类型</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody">
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="container">
+                <p>区块链浏览器 &copy; 2025</p>
+            </div>
+        </footer>
+    </div>
+
     <script>
         // 全局变量
         let currentPage = 0;
@@ -745,6 +948,7 @@
         let currentRefreshRate = 5; // 默认5秒刷新
         let currentTimeRange = 1; // 默认1分钟
         let currentTab = 'cpu'; // 默认显示CPU监控
+        let allChainData = []; // 存储所有链上数据
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function () {
@@ -755,6 +959,16 @@
             loadBlocks(currentPage, pageSize);
 
             // 绑定事件监听器
+            bindEventListeners();
+
+            // 初始化自动刷新
+            setupAutoRefresh();
+            setupHomeAutoRefresh();
+        });
+
+        // 绑定事件监听器
+        function bindEventListeners() {
+            // 分页按钮
             document.getElementById('prevPage').addEventListener('click', function () {
                 if (currentPage > 0) {
                     currentPage--;
@@ -769,6 +983,7 @@
                 }
             });
 
+            // 返回按钮
             document.getElementById('back-button').addEventListener('click', function () {
                 showHomePage();
             });
@@ -799,6 +1014,22 @@
             // 主页手动刷新按钮
             document.getElementById('manualRefreshHome').addEventListener('click', function () {
                 refreshHomeData();
+            });
+
+            // 数据页面刷新按钮
+            document.getElementById('refreshData').addEventListener('click', function () {
+                loadChainData();
+            });
+
+            // 数据搜索
+            document.getElementById('searchData').addEventListener('click', function () {
+                filterChainData();
+            });
+
+            document.getElementById('dataSearch').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    filterChainData();
+                }
             });
 
             // 主页自动刷新开关
@@ -833,11 +1064,7 @@
                     switchTab(tabId);
                 });
             });
-
-            // 初始化自动刷新
-            setupAutoRefresh();
-            setupHomeAutoRefresh();
-        });
+        }
 
         // 设置主页自动刷新
         function setupHomeAutoRefresh() {
@@ -920,6 +1147,7 @@
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('block-detail-page').style.display = 'none';
             document.getElementById('nodes-page').style.display = 'none';
+            document.getElementById('data-page').style.display = 'none';
 
             // 更新导航激活状态
             document.querySelectorAll('.nav-link').forEach(link => {
@@ -934,55 +1162,86 @@
                 document.getElementById('nodes-page').style.display = 'block';
                 document.querySelector('.nav-link[data-page="nodes"]').classList.add('active');
                 loadCPUData();
+            } else if (page === 'data') {
+                document.getElementById('data-page').style.display = 'block';
+                document.querySelector('.nav-link[data-page="data"]').classList.add('active');
+                loadChainData();
             }
         }
 
         // 加载概览数据
         async function loadOverviewData() {
             try {
+                showLoading('home-page');
                 const response = await fetch('/valuechain');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
 
-                document.getElementById('blockHeight').textContent = data.blockHeight;
-                document.getElementById('totalTransactionCount').textContent = data.totalTransactionCount;
-                document.getElementById('orgCount').textContent = data.orgCount;
-                document.getElementById('chainCodeCount').textContent = data.chainCodeCount;
-                document.getElementById('nodeCount').textContent = data.nodeCount;
+                // 根据gateway代码，后端返回的数据结构应该是：
+                // {
+                //   "blockHeight": number,
+                //   "totalTransactionCount": number,
+                //   "orgCount": number,
+                //   "chainCodeCount": number,
+                //   "nodeCount": number
+                // }
 
-                blockHeight = data.blockHeight;
+                document.getElementById('blockHeight').textContent = data.blockHeight || 0;
+                document.getElementById('totalTransactionCount').textContent = data.totalTransactionCount || 0;
+                document.getElementById('orgCount').textContent = data.orgCount || 0;
+                document.getElementById('chainCodeCount').textContent = data.chainCodeCount || 0;
+                document.getElementById('nodeCount').textContent = data.nodeCount || 0;
+
+                blockHeight = data.blockHeight || 0;
+                hideLoading('home-page');
             } catch (error) {
                 console.error('加载概览数据失败:', error);
+                showError('home-page', '加载概览数据失败，请检查后端服务是否正常运行');
+                hideLoading('home-page');
             }
         }
 
         // 加载区块列表
         async function loadBlocks(pageNum, pageSize) {
             try {
+                showLoading('home-page');
                 const response = await fetch(`/valuechain/getBlockByPage?pageNum=${pageNum}&pageSize=${pageSize}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                // 根据gateway代码，返回的是BlockInfo数组
                 const blocks = await response.json();
 
                 const tableBody = document.getElementById('blocksTableBody');
                 tableBody.innerHTML = '';
 
+                if (!blocks || blocks.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">暂无区块数据</td></tr>';
+                    hideLoading('home-page');
+                    return;
+                }
+
                 blocks.forEach(block => {
                     const row = document.createElement('tr');
                     row.className = 'block-row';
-                    row.setAttribute('data-block-num', block.blockNumber);
+                    row.setAttribute('data-block-num', block.BlockNumber || block.blockNumber);
 
                     // 格式化时间戳
-                    const timestamp = new Date(block.timestamp).toLocaleString();
+                    const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString() :
+                        block.timestamp ? new Date(block.timestamp).toLocaleString() : '-';
 
                     row.innerHTML = `
-                        <td class="block-number">${block.blockNumber}</td>
-                        <td class="block-hash" title="${block.blockHash}">${block.blockHash.substring(0, 20)}...</td>
-                        <td><span class="tx-count">${block.txCount}</span></td>
+                        <td class="block-number">${block.BlockNumber || block.blockNumber || 0}</td>
+                        <td class="block-hash" title="${block.BlockHash || block.blockHash || ''}">
+                            ${(block.BlockHash || block.blockHash || '').substring(0, 20)}...
+                        </td>
+                        <td><span class="tx-count">${block.TxCount || block.txCount || 0}</span></td>
                         <td class="timestamp">${timestamp}</td>
-                        <td>${formatBytes(block.blockSize)}</td>
+                        <td>${formatBytes(block.BlockSize || block.blockSize || 0)}</td>
                     `;
 
                     // 添加点击事件
                     row.addEventListener('click', function () {
-                        showBlockDetail(block.blockNumber);
+                        showBlockDetail(block.BlockNumber || block.blockNumber);
                     });
 
                     tableBody.appendChild(row);
@@ -992,33 +1251,43 @@
                 document.getElementById('pageInfo').textContent = `第 ${pageNum + 1} 页`;
                 document.getElementById('prevPage').disabled = pageNum === 0;
                 document.getElementById('nextPage').disabled = (pageNum + 1) * pageSize >= blockHeight;
+                hideLoading('home-page');
             } catch (error) {
                 console.error('加载区块列表失败:', error);
+                showError('home-page', '加载区块列表失败');
+                hideLoading('home-page');
             }
         }
 
         // 显示区块详情
         async function showBlockDetail(blockNum) {
             try {
+                showLoading('block-detail-page');
                 const response = await fetch(`/valuechain/getBlockByNum?blockNum=${blockNum}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const block = await response.json();
 
-                // 填充区块详情数据
-                document.getElementById('detail-blockNumber').textContent = block.blockNumber;
-                document.getElementById('detail-blockHash').textContent = block.blockHash;
-                document.getElementById('detail-previousHash').textContent = block.previousHash;
-                document.getElementById('detail-dataHash').textContent = block.dataHash;
-                document.getElementById('detail-txCount').textContent = block.txCount;
-                document.getElementById('detail-blockSize').textContent = formatBytes(block.blockSize);
-                document.getElementById('detail-timestamp').textContent = new Date(block.timestamp).toLocaleString();
-                document.getElementById('detail-channelId').textContent = block.channelId;
+                // 填充区块详情数据 - 适配两种可能的字段命名方式
+                document.getElementById('detail-blockNumber').textContent = block.BlockNumber || block.blockNumber || 0;
+                document.getElementById('detail-blockHash').textContent = block.BlockHash || block.blockHash || '';
+                document.getElementById('detail-previousHash').textContent = block.PreviousHash || block.previousHash || '';
+                document.getElementById('detail-dataHash').textContent = block.MerkleRoot || block.dataHash || '';
+                document.getElementById('detail-txCount').textContent = block.TxCount || block.txCount || 0;
+                document.getElementById('detail-blockSize').textContent = formatBytes(block.BlockSize || block.blockSize || 0);
+
+                const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString() :
+                    block.timestamp ? new Date(block.timestamp).toLocaleString() : '-';
+                document.getElementById('detail-timestamp').textContent = timestamp;
+
+                document.getElementById('detail-channelId').textContent = block.ChannelID || block.channelId || '-';
 
                 // 填充交易列表
                 const transactionList = document.getElementById('transactionList');
                 transactionList.innerHTML = '';
 
-                if (block.txIds && block.txIds.length > 0) {
-                    block.txIds.forEach(txId => {
+                const txIds = block.TxIDs || block.txIds || [];
+                if (txIds && txIds.length > 0) {
+                    txIds.forEach(txId => {
                         const li = document.createElement('li');
                         li.className = 'transaction-item';
                         li.innerHTML = `<span class="transaction-id">${txId}</span>`;
@@ -1033,19 +1302,30 @@
 
                 // 显示详情页面
                 showBlockDetailPage();
+                hideLoading('block-detail-page');
             } catch (error) {
                 console.error('加载区块详情失败:', error);
+                showError('block-detail-page', '加载区块详情失败');
+                hideLoading('block-detail-page');
             }
         }
 
         // 加载CPU使用率数据
         async function loadCPUData() {
             try {
+                showLoading('nodes-page');
                 const response = await fetch('/valuechain/cpuHistory');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const cpuData = await response.json();
 
                 const nodeCards = document.getElementById('cpuNodeCards');
                 nodeCards.innerHTML = '';
+
+                if (!cpuData || Object.keys(cpuData).length === 0) {
+                    nodeCards.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>暂无CPU监控数据</p></div>';
+                    hideLoading('nodes-page');
+                    return;
+                }
 
                 const now = Date.now();
                 const startTime = now - (currentTimeRange * 60 * 1000);
@@ -1053,19 +1333,26 @@
                 // 处理每个节点的数据
                 Object.keys(cpuData).forEach(nodeName => {
                     const nodeData = cpuData[nodeName];
-                    if (nodeData.length === 0) return;
+                    if (!nodeData || nodeData.length === 0) return;
 
                     // 过滤数据以匹配所选时间范围
-                    const filteredData = nodeData.filter(d => new Date(d.Timestamp).getTime() >= startTime);
+                    const filteredData = nodeData.filter(d => {
+                        const timestamp = d.Timestamp ? new Date(d.Timestamp).getTime() : 0;
+                        return timestamp >= startTime;
+                    });
 
-                    // 获取最新的CPU使用率（来自未经过滤的数据）
+                    // 获取最新的CPU使用率
                     const latestData = nodeData[nodeData.length - 1];
-                    const cpuUsage = latestData.CPUUsage.toFixed(2);
+                    const cpuUsage = (latestData.CPUUsage || latestData.cpuUsage || 0).toFixed(2);
 
                     // 根据CPU使用率设置颜色
                     let cpuClass = 'cpu-low';
                     if (cpuUsage > 50) cpuClass = 'cpu-medium';
                     if (cpuUsage > 80) cpuClass = 'cpu-high';
+
+                    const latestTimestamp = latestData.Timestamp ?
+                        new Date(latestData.Timestamp).toLocaleString() :
+                        new Date().toLocaleString();
 
                     // 创建节点卡片
                     const nodeCard = document.createElement('div');
@@ -1073,7 +1360,7 @@
                     nodeCard.innerHTML = `
                         <div class="node-name">${nodeName}</div>
                         <div class="cpu-usage ${cpuClass}">${cpuUsage}%</div>
-                        <div>最新更新时间: ${new Date(latestData.Timestamp).toLocaleString()}</div>
+                        <div>最新更新时间: ${latestTimestamp}</div>
                         <div class="chart-container">
                             <canvas id="cpu-chart-${nodeName}"></canvas>
                         </div>
@@ -1084,20 +1371,30 @@
                     // 使用过滤后的数据创建图表
                     createCPUChart(nodeName, filteredData);
                 });
+                hideLoading('nodes-page');
             } catch (error) {
                 console.error('加载CPU数据失败:', error);
-                document.getElementById('cpuNodeCards').innerHTML = '<p>无法加载CPU数据，请确保监控服务正在运行。</p>';
+                document.getElementById('cpuNodeCards').innerHTML = '<div class="error-message">无法加载CPU数据，请确保监控服务正在运行。</div>';
+                hideLoading('nodes-page');
             }
         }
 
         // 加载内存使用率数据
         async function loadMemoryData() {
             try {
+                showLoading('nodes-page');
                 const response = await fetch('/valuechain/memoryHistory');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const memoryData = await response.json();
 
                 const nodeCards = document.getElementById('memoryNodeCards');
                 nodeCards.innerHTML = '';
+
+                if (!memoryData || Object.keys(memoryData).length === 0) {
+                    nodeCards.innerHTML = '<div class="empty-state"><div class="icon">💾</div><p>暂无内存监控数据</p></div>';
+                    hideLoading('nodes-page');
+                    return;
+                }
 
                 const now = Date.now();
                 const startTime = now - (currentTimeRange * 60 * 1000);
@@ -1105,19 +1402,28 @@
                 // 处理每个节点的数据
                 Object.keys(memoryData).forEach(nodeName => {
                     const nodeData = memoryData[nodeName];
-                    if (nodeData.length === 0) return;
+                    if (!nodeData || nodeData.length === 0) return;
 
                     // 过滤数据以匹配所选时间范围
-                    const filteredData = nodeData.filter(d => new Date(d.Timestamp).getTime() >= startTime);
+                    const filteredData = nodeData.filter(d => {
+                        const timestamp = d.Timestamp ? new Date(d.Timestamp).getTime() : 0;
+                        return timestamp >= startTime;
+                    });
 
-                    // 获取最新的内存使用率（来自未经过滤的数据）
+                    // 获取最新的内存使用率
                     const latestData = nodeData[nodeData.length - 1];
-                    const memoryUsagePercent = ((latestData.UsedMemory / latestData.TotalMemory) * 100).toFixed(2);
+                    const usedMemory = latestData.UsedMemory || latestData.usedMemory || 0;
+                    const totalMemory = latestData.TotalMemory || latestData.totalMemory || 1;
+                    const memoryUsagePercent = ((usedMemory / totalMemory) * 100).toFixed(2);
 
                     // 根据内存使用率设置颜色
                     let memoryClass = 'memory-low';
                     if (memoryUsagePercent > 70) memoryClass = 'memory-medium';
                     if (memoryUsagePercent > 90) memoryClass = 'memory-high';
+
+                    const latestTimestamp = latestData.Timestamp ?
+                        new Date(latestData.Timestamp).toLocaleString() :
+                        new Date().toLocaleString();
 
                     // 创建节点卡片
                     const nodeCard = document.createElement('div');
@@ -1125,8 +1431,8 @@
                     nodeCard.innerHTML = `
                         <div class="node-name">${nodeName}</div>
                         <div class="memory-usage ${memoryClass}">${memoryUsagePercent}%</div>
-                        <div>已用内存: ${formatBytes(latestData.UsedMemory)} / ${formatBytes(latestData.TotalMemory)}</div>
-                        <div>最新更新时间: ${new Date(latestData.Timestamp).toLocaleString()}</div>
+                        <div>已用内存: ${formatBytes(usedMemory)} / ${formatBytes(totalMemory)}</div>
+                        <div>最新更新时间: ${latestTimestamp}</div>
                         <div class="chart-container">
                             <canvas id="memory-chart-${nodeName}"></canvas>
                         </div>
@@ -1137,47 +1443,113 @@
                     // 使用过滤后的数据创建图表
                     createMemoryChart(nodeName, filteredData);
                 });
+                hideLoading('nodes-page');
             } catch (error) {
                 console.error('加载内存数据失败:', error);
-                document.getElementById('memoryNodeCards').innerHTML = '<p>无法加载内存数据，请确保监控服务正在运行。</p>';
+                document.getElementById('memoryNodeCards').innerHTML = '<div class="error-message">无法加载内存数据，请确保监控服务正在运行。</div>';
+                hideLoading('nodes-page');
             }
         }
 
-        // 创建CPU使用率图表（自适应Y轴，最小刻度2%）
+        // 加载链上数据
+        async function loadChainData() {
+            try {
+                showLoading('data-page');
+                const response = await fetch('/valuechain/getAllData');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+
+                allChainData = data || [];
+                displayChainData(allChainData);
+                hideLoading('data-page');
+            } catch (error) {
+                console.error('加载链上数据失败:', error);
+                showError('data-page', '加载链上数据失败');
+                hideLoading('data-page');
+            }
+        }
+
+        // 显示链上数据
+        function displayChainData(data) {
+            const tableBody = document.getElementById('dataTableBody');
+            tableBody.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 3rem;"><div class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></div></td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+
+                // 适配不同的字段命名方式
+                const key = item.Key || item.key || '';
+                let value = item.Value || item.value || '';
+                const isJson = item.IsJSON || item.isJson || false;
+
+                let valueDisplay = value;
+                let displayIsJson = isJson;
+
+                // 尝试解析JSON数据
+                if (typeof value === 'string' && value.trim().startsWith('{')) {
+                    try {
+                        const parsedValue = JSON.parse(value);
+                        valueDisplay = JSON.stringify(parsedValue, null, 2);
+                        displayIsJson = true;
+                    } catch (e) {
+                        // 如果不是有效的JSON，保持原样显示
+                        valueDisplay = value;
+                    }
+                }
+
+                row.innerHTML = `
+                    <td class="data-key" title="${key}">${key}</td>
+                    <td class="data-value">
+                        ${displayIsJson ?
+                        `<div class="json-value">${valueDisplay}</div>` :
+                        `<span title="${valueDisplay}">${valueDisplay}</span>`
+                    }
+                    </td>
+                    <td>${displayIsJson ? 'JSON<span class="json-badge">JSON</span>' : '字符串'}</td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 过滤链上数据
+        function filterChainData() {
+            const searchTerm = document.getElementById('dataSearch').value.toLowerCase();
+
+            if (!searchTerm) {
+                displayChainData(allChainData);
+                return;
+            }
+
+            const filteredData = allChainData.filter(item => {
+                const key = (item.Key || item.key || '').toLowerCase();
+                const value = String(item.Value || item.value || '').toLowerCase();
+                return key.includes(searchTerm) || value.includes(searchTerm);
+            });
+
+            displayChainData(filteredData);
+        }
+
+        // 创建CPU使用率图表
         function createCPUChart(nodeName, dataToDisplay) {
-            const ctx = document.getElementById(`cpu-chart-${nodeName}`).getContext('2d');
+            const canvasId = `cpu-chart-${nodeName}`;
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
 
             // 准备图表数据
             const labels = dataToDisplay.map(data =>
-                new Date(data.Timestamp).toLocaleTimeString()
+                data.Timestamp ? new Date(data.Timestamp).toLocaleTimeString() : ''
             );
-            const dataPoints = dataToDisplay.map(data => data.CPUUsage.toFixed(2));
-
-            // 计算数据的最大值和最小值，用于自适应Y轴
-            const maxValue = Math.max(...dataPoints);
-            const minValue = Math.min(...dataPoints);
-
-            // 设置Y轴范围，添加一些边距让图表更美观
-            const yAxisMax = Math.min(100, Math.ceil(maxValue + (maxValue - minValue) * 0.2));
-            const yAxisMin = Math.max(0, Math.floor(minValue - (maxValue - minValue) * 0.1));
-
-            // 如果数据变化很小，设置一个最小范围
-            const dataRange = maxValue - minValue;
-            const finalYAxisMax = dataRange < 5 ? Math.min(100, maxValue + 5) : yAxisMax;
-            const finalYAxisMin = dataRange < 5 ? Math.max(0, minValue - 5) : yAxisMin;
-
-            // 计算合适的步长，确保最小刻度为2%
-            const range = finalYAxisMax - finalYAxisMin;
-            let stepSize = 2; // 默认步长为2%
-
-            // 如果范围较大，适当增加步长
-            if (range > 20) {
-                stepSize = 5;
-            } else if (range > 40) {
-                stepSize = 10;
-            } else if (range > 80) {
-                stepSize = 20;
-            }
+            const dataPoints = dataToDisplay.map(data =>
+                (data.CPUUsage || data.cpuUsage || 0).toFixed(2)
+            );
 
             // 如果已存在图表，先销毁
             if (cpuCharts[nodeName]) {
@@ -1205,84 +1577,47 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            min: finalYAxisMin,
-                            max: finalYAxisMax,
+                            beginAtZero: true,
+                            max: 100,
                             ticks: {
-                                stepSize: stepSize, // 设置刻度步长
                                 callback: function (value) {
-                                    // 确保显示整数刻度值
-                                    return Number.isInteger(value) ? value + '%' : '';
-                                },
-                                autoSkip: true,
-                                maxTicksLimit: 8
-                            },
-                            title: {
-                                display: true,
-                                text: '使用率 (%)'
+                                    return value + '%';
+                                }
                             }
                         },
                         x: {
                             ticks: {
                                 maxRotation: 45,
-                                minRotation: 45,
-                                autoSkip: true,
-                                maxTicksLimit: 10
+                                minRotation: 45
                             }
                         }
                     },
                     plugins: {
                         legend: {
                             display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    return `CPU使用率: ${context.parsed.y.toFixed(2)}%`;
-                                }
-                            }
                         }
                     }
                 }
             });
         }
 
-        // 创建内存使用率图表（自适应Y轴，最小刻度2%）
+        // 创建内存使用率图表
         function createMemoryChart(nodeName, dataToDisplay) {
-            const ctx = document.getElementById(`memory-chart-${nodeName}`).getContext('2d');
+            const canvasId = `memory-chart-${nodeName}`;
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
 
             // 准备图表数据
             const labels = dataToDisplay.map(data =>
-                new Date(data.Timestamp).toLocaleTimeString()
+                data.Timestamp ? new Date(data.Timestamp).toLocaleTimeString() : ''
             );
-            const dataPoints = dataToDisplay.map(data =>
-                ((data.UsedMemory / data.TotalMemory) * 100).toFixed(2)
-            );
-
-            // 计算数据的最大值和最小值，用于自适应Y轴
-            const maxValue = Math.max(...dataPoints);
-            const minValue = Math.min(...dataPoints);
-
-            // 设置Y轴范围，添加一些边距
-            const yAxisMax = Math.min(100, Math.ceil(maxValue + (maxValue - minValue) * 0.2));
-            const yAxisMin = Math.max(0, Math.floor(minValue - (maxValue - minValue) * 0.1));
-
-            // 如果数据变化很小，设置一个最小范围
-            const dataRange = maxValue - minValue;
-            const finalYAxisMax = dataRange < 5 ? Math.min(100, maxValue + 5) : yAxisMax;
-            const finalYAxisMin = dataRange < 5 ? Math.max(0, minValue - 5) : yAxisMin;
-
-            // 计算合适的步长，确保最小刻度为2%
-            const range = finalYAxisMax - finalYAxisMin;
-            let stepSize = 2; // 默认步长为2%
-
-            // 如果范围较大，适当增加步长
-            if (range > 20) {
-                stepSize = 5;
-            } else if (range > 40) {
-                stepSize = 10;
-            } else if (range > 80) {
-                stepSize = 20;
-            }
+            const dataPoints = dataToDisplay.map(data => {
+                const used = data.UsedMemory || data.usedMemory || 0;
+                const total = data.TotalMemory || data.totalMemory || 1;
+                return ((used / total) * 100).toFixed(2);
+            });
 
             // 如果已存在图表，先销毁
             if (memoryCharts[nodeName]) {
@@ -1310,41 +1645,24 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            min: finalYAxisMin,
-                            max: finalYAxisMax,
+                            beginAtZero: true,
+                            max: 100,
                             ticks: {
-                                stepSize: stepSize, // 设置刻度步长
                                 callback: function (value) {
-                                    // 确保显示整数刻度值
-                                    return Number.isInteger(value) ? value + '%' : '';
-                                },
-                                autoSkip: true,
-                                maxTicksLimit: 8
-                            },
-                            title: {
-                                display: true,
-                                text: '使用率 (%)'
+                                    return value + '%';
+                                }
                             }
                         },
                         x: {
                             ticks: {
                                 maxRotation: 45,
-                                minRotation: 45,
-                                autoSkip: true,
-                                maxTicksLimit: 10
+                                minRotation: 45
                             }
                         }
                     },
                     plugins: {
                         legend: {
                             display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    return `内存使用率: ${context.parsed.y.toFixed(2)}%`;
-                                }
-                            }
                         }
                     }
                 }
@@ -1356,6 +1674,7 @@
             document.getElementById('home-page').style.display = 'block';
             document.getElementById('block-detail-page').style.display = 'none';
             document.getElementById('nodes-page').style.display = 'none';
+            document.getElementById('data-page').style.display = 'none';
 
             // 更新导航激活状态
             document.querySelectorAll('.nav-link').forEach(link => {
@@ -1369,6 +1688,44 @@
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('block-detail-page').style.display = 'block';
             document.getElementById('nodes-page').style.display = 'none';
+            document.getElementById('data-page').style.display = 'none';
+        }
+
+        // 显示加载状态
+        function showLoading(pageId) {
+            let overlay = document.querySelector(`#${pageId} .loading-overlay`);
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'loading-overlay';
+                overlay.innerHTML = '<div class="loading"></div>';
+                const pageElement = document.getElementById(pageId);
+                if (pageElement) {
+                    pageElement.style.position = 'relative';
+                    pageElement.appendChild(overlay);
+                }
+            }
+        }
+
+        // 隐藏加载状态
+        function hideLoading(pageId) {
+            const overlay = document.querySelector(`#${pageId} .loading-overlay`);
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        // 显示错误信息
+        function showError(pageId, message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+
+            const container = document.getElementById(pageId).querySelector('.container') ||
+                document.getElementById(pageId).querySelector('main') ||
+                document.getElementById(pageId);
+            if (container) {
+                container.insertBefore(errorDiv, container.firstChild);
+            }
         }
 
         // 格式化字节大小

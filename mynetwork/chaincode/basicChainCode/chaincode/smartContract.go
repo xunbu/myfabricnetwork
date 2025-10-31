@@ -121,15 +121,6 @@ func (s *SmartContract) PutString(ctx contractapi.TransactionContextInterface, k
 	return nil
 }
 
-// json格式数据上链 ([]byte，用以新增json)
-func (s *SmartContract) PutBytes(ctx contractapi.TransactionContextInterface, key string, value []byte) error {
-	err := ctx.GetStub().PutState(key, value)
-	if err != nil {
-		return fmt.Errorf("error in PutState, key:%v,value:%v", key, value)
-	}
-	return nil
-}
-
 // 更新数据 (string)
 func (s *SmartContract) UpdateString(ctx contractapi.TransactionContextInterface, key string, value string) error {
 	exists, err := s.KeyExists(ctx, key)
@@ -140,18 +131,6 @@ func (s *SmartContract) UpdateString(ctx contractapi.TransactionContextInterface
 		return fmt.Errorf("the key %s does not exist", key)
 	}
 	return s.PutString(ctx, key, value)
-}
-
-// 更新数据 ([]byte，用以更新json)
-func (s *SmartContract) UpdateBytes(ctx contractapi.TransactionContextInterface, key string, value []byte) error {
-	exists, err := s.KeyExists(ctx, key)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("the key %s does not exist", key)
-	}
-	return s.PutBytes(ctx, key, value)
 }
 
 func (s *SmartContract) DeleteByKey(ctx contractapi.TransactionContextInterface, key string) error {

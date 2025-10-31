@@ -138,8 +138,7 @@ func readFirstFile(dirPath string) ([]byte, error) {
 	return data, nil
 }
 
-//============ Gateway操作函数 =======
-
+// ============ Gateway操作函数 =======
 // EvaluateTransaction 执行查询交易
 func EvaluateTransaction(gw *client.Gateway, channelName, chainCodeName, funcName string, args ...string) ([]byte, error) {
 	network := gw.GetNetwork(channelName)
@@ -152,6 +151,16 @@ func SubmitTransaction(gw *client.Gateway, channelName, chainCodeName, funcName 
 	network := gw.GetNetwork(channelName)
 	contract := network.GetContract(chainCodeName)
 	return contract.SubmitTransaction(funcName, args...)
+}
+
+// SubmitTransaction 执行提交交易
+func PutJson(gw *client.Gateway, channelName string, key string, jsonData map[string]interface{}) ([]byte, error) {
+	jsonBytes, err := json.Marshal(jsonData)
+	if err != nil {
+		return nil, fmt.Errorf("JSON 序列化失败: %w", err)
+	}
+	jsonString := string(jsonBytes)
+	return SubmitTransaction(gw, channelName, "basic", "PutString", key, jsonString)
 }
 
 // GetTransactionCount 返回通道中的交易总数
@@ -319,6 +328,7 @@ func GetBlockListByPage(gw *client.Gateway, channelName string, pageNum uint64, 
 
 	return blockList, nil
 }
+
 func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, includeTxDetails bool) (*BlockInfo, error) {
 	var block common.Block
 	if err := proto.Unmarshal(blockBytes, &block); err != nil {
