@@ -431,6 +431,20 @@
             display: block;
         }
 
+        /* 主页自动刷新控制样式 */
+        .home-refresh-controls {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+        }
+
+        .refresh-status {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .header-content {
@@ -464,6 +478,11 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+
+            .home-refresh-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
@@ -492,6 +511,14 @@
 
         <main class="container">
             <section class="dashboard">
+                <div class="home-refresh-controls">
+                    <div class="refresh-status" id="refreshStatus">最后更新: --</div>
+                    <div>
+                        <label><input type="checkbox" id="autoRefreshToggle" checked> 自动刷新 (10秒)</label>
+                    </div>
+                    <button class="refresh-button" id="manualRefreshHome">手动刷新</button>
+                </div>
+
                 <h2 class="section-title">区块链概览</h2>
 
                 <div class="stats-grid">
@@ -714,6 +741,7 @@
         let cpuCharts = {};
         let memoryCharts = {};
         let refreshInterval = null;
+        let homeRefreshInterval = null;
         let currentRefreshRate = 5; // 默认5秒刷新
         let currentTimeRange = 1; // 默认1分钟
         let currentTab = 'cpu'; // 默认显示CPU监控
@@ -768,6 +796,16 @@
                 }
             });
 
+            // 主页手动刷新按钮
+            document.getElementById('manualRefreshHome').addEventListener('click', function () {
+                refreshHomeData();
+            });
+
+            // 主页自动刷新开关
+            document.getElementById('autoRefreshToggle').addEventListener('change', function () {
+                setupHomeAutoRefresh();
+            });
+
             // 自动刷新设置
             document.querySelectorAll('input[name="refresh"]').forEach(radio => {
                 radio.addEventListener('change', function () {
@@ -798,7 +836,39 @@
 
             // 初始化自动刷新
             setupAutoRefresh();
+            setupHomeAutoRefresh();
         });
+
+        // 设置主页自动刷新
+        function setupHomeAutoRefresh() {
+            if (homeRefreshInterval) {
+                clearInterval(homeRefreshInterval);
+                homeRefreshInterval = null;
+            }
+
+            const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+            if (autoRefreshToggle.checked) {
+                homeRefreshInterval = setInterval(() => {
+                    if (document.getElementById('home-page').style.display !== 'none') {
+                        refreshHomeData();
+                    }
+                }, 10000); // 10秒刷新
+            }
+        }
+
+        // 刷新主页数据
+        function refreshHomeData() {
+            loadOverviewData();
+            loadBlocks(currentPage, pageSize);
+            updateRefreshStatus();
+        }
+
+        // 更新刷新状态
+        function updateRefreshStatus() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('refreshStatus').textContent = `最后更新: ${timeString}`;
+        }
 
         // 切换标签页
         function switchTab(tabId) {
@@ -1072,6 +1142,7 @@
                 document.getElementById('memoryNodeCards').innerHTML = '<p>无法加载内存数据，请确保监控服务正在运行。</p>';
             }
         }
+
         // 创建CPU使用率图表（自适应Y轴，最小刻度2%）
         function createCPUChart(nodeName, dataToDisplay) {
             const ctx = document.getElementById(`cpu-chart-${nodeName}`).getContext('2d');
@@ -1279,93 +1350,6 @@
                 }
             });
         }
-        const ctx = document.getElementById(`memory-chart-${nodeName}`).getContext('2d');
-
-        // 准备图表数据
-        const labels = dataToDisplay.map(data =>
-            new Date(data.Timestamp).toLocaleTimeString()
-        );
-        const dataPoints = dataToDisplay.map(data =>
-            ((data.UsedMemory / data.TotalMemory) * 100).toFixed(2)
-        );
-
-        // 计算数据的最大值和最小值，用于自适应Y轴
-        const maxValue = Math.max(...dataPoints);
-        const minValue = Math.min(...dataPoints);
-
-        // 设置Y轴范围，添加一些边距
-        const yAxisMax = Math.min(100, Math.ceil(maxValue + (maxValue - minValue) * 0.2));
-        const yAxisMin = Math.max(0, Math.floor(minValue - (maxValue - minValue) * 0.1));
-
-        // 如果数据变化很小，设置一个最小范围
-        const dataRange = maxValue - minValue;
-        const finalYAxisMax = dataRange < 5 ? Math.min(100, maxValue + 5) : yAxisMax;
-        const finalYAxisMin = dataRange < 5 ? Math.max(0, minValue - 5) : yAxisMin;
-
-        // 如果已存在图表，先销毁
-        if (memoryCharts[nodeName]) {
-            memoryCharts[nodeName].destroy();
-        }
-
-        // 创建新图表
-        memoryCharts[nodeName] = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: '内存使用率 (%)',
-                    data: dataPoints,
-                    borderColor: '#d81b60',
-                    backgroundColor: 'rgba(216, 27, 96, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: dataToDisplay.length < 50 ? 3 : 0,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        min: finalYAxisMin,
-                        max: finalYAxisMax,
-                        ticks: {
-                            callback: function (value) {
-                                return value + '%';
-                            },
-                            autoSkip: true,
-                            maxTicksLimit: 8
-                        },
-                        title: {
-                            display: true,
-                            text: '使用率 (%)'
-                        }
-                    },
-                    x: {
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45,
-                            autoSkip: true,
-                            maxTicksLimit: 10
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                return `内存使用率: ${context.parsed.y}%`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
 
         // 显示主页
         function showHomePage() {

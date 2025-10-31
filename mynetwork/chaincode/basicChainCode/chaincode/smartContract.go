@@ -34,25 +34,40 @@ func (s *SmartContract) QueryByKey(ctx contractapi.TransactionContextInterface, 
 	return v, nil
 }
 
-func (s *SmartContract) QueryByRange(ctx contractapi.TransactionContextInterface, start string, end string) (map[string]interface{}, error) {
+type QueryRichResult struct {
+	Key    string      `json:"key"`
+	Value  interface{} `json:"value"`
+	IsJSON bool        `json:"isJson"`
+}
+
+func (s *SmartContract) QueryByRange(ctx contractapi.TransactionContextInterface, start string, end string) ([]QueryRichResult, error) {
 	resultsIterator, err := ctx.GetStub().GetStateByRange(start, end)
 	if err != nil {
 		return nil, err
 	}
 	defer resultsIterator.Close()
 
-	results := make(map[string]interface{}, 0) //注意这里string是key，interface{}为value
+	var results []QueryRichResult
 	for resultsIterator.HasNext() {
 		queryResponse, err := resultsIterator.Next()
 		if err != nil {
 			return nil, err
 		}
-		results[queryResponse.Key] = queryResponse.Value
+		result := QueryRichResult{Key: queryResponse.Key}
+		var jsonData interface{}
+		if err := json.Unmarshal(queryResponse.Value, &jsonData); err == nil {
+			result.Value = jsonData
+			result.IsJSON = true
+		} else {
+			result.Value = string(queryResponse.Value)
+			result.IsJSON = false
+		}
+		results = append(results, result)
 	}
 	return results, nil
 }
 
-func (s *SmartContract) QueryByRich(ctx contractapi.TransactionContextInterface, richQuery string) ([]byte, error) {
+func (s *SmartContract) QueryByRichAsJson(ctx contractapi.TransactionContextInterface, richQuery string) ([]byte, error) {
 	// query := fmt.Sprintf(`{"selector":{"model_label":"%s"}}`, modelValue)//根据模块（存储、采集、管控）查询相应的数据
 	// query := fmt.Sprintf(`{"selector":{"database_label":"%s"}}`, labelValue)// 根据数据库查询相应的表元数据
 	resultsIterator, err := ctx.GetStub().GetQueryResult(richQuery)
@@ -79,18 +94,18 @@ func (s *SmartContract) QueryByRich(ctx contractapi.TransactionContextInterface,
 	return v, nil
 }
 
-// 查询数据并以string形式返回
-func (s *SmartContract) QueryByKeyString(ctx contractapi.TransactionContextInterface, key string) (string, error) {
-	v, err := s.QueryByKey(ctx, key)
+// 查询数据并以json(bytes)形式返回
+func (s *SmartContract) QueryByKeyAsBytes(ctx contractapi.TransactionContextInterface, key string) ([]byte, error) {
+	v, err := ctx.GetStub().GetState(key)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
-	return string(v), nil
+	return v, nil
 }
 
-// 富查询并以string形式返回
-func (s *SmartContract) QueryByRichString(ctx contractapi.TransactionContextInterface, key string) (string, error) {
-	v, err := s.QueryByRich(ctx, key)
+// 查询数据并以string形式返回
+func (s *SmartContract) QueryByKeyAsString(ctx contractapi.TransactionContextInterface, key string) (string, error) {
+	v, err := s.QueryByKey(ctx, key)
 	if err != nil {
 		return "", err
 	}
@@ -106,6 +121,7 @@ func (s *SmartContract) PutString(ctx contractapi.TransactionContextInterface, k
 	return nil
 }
 
+// json格式数据上链 ([]byte，用以新增json)
 func (s *SmartContract) PutBytes(ctx contractapi.TransactionContextInterface, key string, value []byte) error {
 	err := ctx.GetStub().PutState(key, value)
 	if err != nil {
@@ -126,7 +142,7 @@ func (s *SmartContract) UpdateString(ctx contractapi.TransactionContextInterface
 	return s.PutString(ctx, key, value)
 }
 
-// 更新数据 (string)
+// 更新数据 ([]byte，用以更新json)
 func (s *SmartContract) UpdateBytes(ctx contractapi.TransactionContextInterface, key string, value []byte) error {
 	exists, err := s.KeyExists(ctx, key)
 	if err != nil {
