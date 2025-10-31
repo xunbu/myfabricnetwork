@@ -153,7 +153,12 @@ func SubmitTransaction(gw *client.Gateway, channelName, chainCodeName, funcName 
 	return contract.SubmitTransaction(funcName, args...)
 }
 
-// SubmitTransaction 执行提交交易
+// 往Basic链码写入数据
+func PutString(gw *client.Gateway, channelName string, key string, data string) ([]byte, error) {
+
+	return SubmitTransaction(gw, channelName, "basic", "PutString", key, data)
+}
+
 func PutJson(gw *client.Gateway, channelName string, key string, jsonData map[string]interface{}) ([]byte, error) {
 	jsonBytes, err := json.Marshal(jsonData)
 	if err != nil {

@@ -526,6 +526,85 @@
             margin-bottom: 1rem;
         }
 
+        /* JSON展开/收缩样式 */
+        .json-toggle {
+            background: none;
+            border: none;
+            color: #1a237e;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .json-toggle:hover {
+            background-color: #e8eaf6;
+        }
+
+        .json-container {
+            position: relative;
+        }
+
+        .json-content {
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .json-content.collapsed {
+            max-height: 60px;
+            overflow: hidden;
+        }
+
+        .json-expand-icon {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #666;
+            margin-right: 5px;
+            transition: transform 0.2s;
+        }
+
+        .json-expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .json-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .json-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .json-action-btn {
+            background: #e0e0e0;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .json-action-btn:hover {
+            background: #d0d0d0;
+        }
+
         /* 加载状态 */
         .loading {
             display: inline-block;
@@ -1469,7 +1548,7 @@
             }
         }
 
-        // 显示链上数据
+        // 显示链上数据 - 修复JSON显示问题
         function displayChainData(data) {
             const tableBody = document.getElementById('dataTableBody');
             tableBody.innerHTML = '';
@@ -1479,7 +1558,7 @@
                 return;
             }
 
-            data.forEach(item => {
+            data.forEach((item, index) => {
                 const row = document.createElement('tr');
 
                 // 适配不同的字段命名方式
@@ -1489,12 +1568,19 @@
 
                 let valueDisplay = value;
                 let displayIsJson = isJson;
+                let parsedJson = null;
 
-                // 尝试解析JSON数据
-                if (typeof value === 'string' && value.trim().startsWith('{')) {
+                // 修复JSON显示问题
+                if (typeof value === 'object' && value !== null) {
+                    // 如果value已经是对象，直接格式化
+                    valueDisplay = JSON.stringify(value, null, 2);
+                    displayIsJson = true;
+                    parsedJson = value;
+                } else if (typeof value === 'string' && value.trim().startsWith('{')) {
+                    // 如果是JSON字符串，尝试解析
                     try {
-                        const parsedValue = JSON.parse(value);
-                        valueDisplay = JSON.stringify(parsedValue, null, 2);
+                        parsedJson = JSON.parse(value);
+                        valueDisplay = JSON.stringify(parsedJson, null, 2);
                         displayIsJson = true;
                     } catch (e) {
                         // 如果不是有效的JSON，保持原样显示
@@ -1506,15 +1592,98 @@
                     <td class="data-key" title="${key}">${key}</td>
                     <td class="data-value">
                         ${displayIsJson ?
-                        `<div class="json-value">${valueDisplay}</div>` :
-                        `<span title="${valueDisplay}">${valueDisplay}</span>`
+                        `<div class="json-container">
+                                <div class="json-controls">
+                                    <button class="json-toggle" data-index="${index}">
+                                        <span class="json-expand-icon"></span>
+                                        JSON
+                                    </button>
+                                    <span class="json-badge">JSON</span>
+                                    <div class="json-actions">
+                                        <button class="json-action-btn" onclick="copyJsonToClipboard(${index}, this)">复制</button>
+                                        <button class="json-action-btn" onclick="toggleJsonView(${index})">格式化</button>
+                                    </div>
+                                </div>
+                                <div class="json-content collapsed" id="json-content-${index}">${escapeHtml(valueDisplay)}</div>
+                            </div>` :
+                        `<span title="${escapeHtml(valueDisplay)}">${escapeHtml(truncateText(valueDisplay, 100))}</span>`
                     }
                     </td>
-                    <td>${displayIsJson ? 'JSON<span class="json-badge">JSON</span>' : '字符串'}</td>
+                    <td>${displayIsJson ? 'JSON' : '字符串'}</td>
                 `;
 
                 tableBody.appendChild(row);
             });
+
+            // 为JSON展开/收缩按钮添加事件监听器
+            document.querySelectorAll('.json-toggle').forEach(button => {
+                button.addEventListener('click', function () {
+                    const index = this.getAttribute('data-index');
+                    toggleJsonDisplay(index);
+                });
+            });
+        }
+
+        // 切换JSON显示/隐藏
+        function toggleJsonDisplay(index) {
+            const content = document.getElementById(`json-content-${index}`);
+            const icon = document.querySelector(`.json-toggle[data-index="${index}"] .json-expand-icon`);
+
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                icon.classList.add('expanded');
+            } else {
+                content.classList.add('collapsed');
+                icon.classList.remove('expanded');
+            }
+        }
+
+        // 切换JSON视图（格式化/压缩）
+        function toggleJsonView(index) {
+            const content = document.getElementById(`json-content-${index}`);
+            const currentText = content.textContent;
+
+            try {
+                const parsed = JSON.parse(currentText);
+                // 如果当前是格式化的，就压缩它
+                if (currentText.includes('\n')) {
+                    content.textContent = JSON.stringify(parsed);
+                } else {
+                    // 如果是压缩的，就格式化它
+                    content.textContent = JSON.stringify(parsed, null, 2);
+                }
+            } catch (e) {
+                console.error('JSON解析错误:', e);
+            }
+        }
+
+        // 复制JSON到剪贴板
+        function copyJsonToClipboard(index, button) {
+            const content = document.getElementById(`json-content-${index}`);
+            const text = content.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '已复制';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 文本截断函数
+        function truncateText(text, maxLength) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
         }
 
         // 过滤链上数据
