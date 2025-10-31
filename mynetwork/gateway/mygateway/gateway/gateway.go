@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
+	"guolong.com/basic-chaincode/chaincode"
 )
 
 //============ 创建gateway连接的代码 =======
@@ -437,6 +438,20 @@ func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*Bl
 }
 
 // =============end
+
+func GetAllStates(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error) {
+	v, err := EvaluateTransaction(gw, channelName, "basic", "QueryByRange", "", "")
+	if err != nil {
+		return nil, err
+	}
+	var results []chaincode.QueryRichResult
+	err = json.Unmarshal(v, &results)
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
 // FormatJSON 格式化JSON数据
 func FormatJSON(data []byte) (string, error) {
 	var prettyJSON bytes.Buffer

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
-	"guolong.com/fabric-gateway/admin"
 	"guolong.com/fabric-gateway/gateway"
 )
 
@@ -59,10 +57,30 @@ func main() {
 	// 	panic(err)
 	// }
 	// fmt.Println(v)
-	v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
+	// v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(v)
+	// v, err := gateway.GetAllStates(gw, channelName)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// v2, err := json.Marshal(v)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(v2))
+
+	v3, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKeyAsBytes", "author")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(v)
-
+	// var v string
+	// err = json.Unmarshal(v3, &v)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	fmt.Println(string(v3))
 }
