@@ -1704,7 +1704,7 @@
             displayChainData(filteredData);
         }
 
-        // 创建CPU使用率图表
+        // 创建CPU使用率图表 - 修改纵坐标设置
         function createCPUChart(nodeName, dataToDisplay) {
             const canvasId = `cpu-chart-${nodeName}`;
             const canvas = document.getElementById(canvasId);
@@ -1719,6 +1719,19 @@
             const dataPoints = dataToDisplay.map(data =>
                 (data.CPUUsage || data.cpuUsage || 0).toFixed(2)
             );
+
+            // 计算动态纵坐标范围
+            const minValue = Math.min(...dataPoints);
+            const maxValue = Math.max(...dataPoints);
+
+            // 设置动态范围，最小刻度为2%
+            const rangePadding = 2; // 2%的边距
+            const suggestedMin = Math.max(0, Math.floor(minValue / 2) * 2 - rangePadding);
+            const suggestedMax = Math.min(100, Math.ceil(maxValue / 2) * 2 + rangePadding);
+
+            // 确保最小值和最大值之间有足够的间隔
+            const finalMin = suggestedMin >= 0 ? suggestedMin : 0;
+            const finalMax = suggestedMax <= 100 ? (suggestedMax - finalMin < 10 ? finalMin + 10 : suggestedMax) : 100;
 
             // 如果已存在图表，先销毁
             if (cpuCharts[nodeName]) {
@@ -1746,9 +1759,11 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true,
-                            max: 100,
+                            beginAtZero: false,
+                            min: finalMin,
+                            max: finalMax,
                             ticks: {
+                                stepSize: 2, // 最小刻度为2%
                                 callback: function (value) {
                                     return value + '%';
                                 }
@@ -1770,7 +1785,7 @@
             });
         }
 
-        // 创建内存使用率图表
+        // 创建内存使用率图表 - 修改纵坐标设置
         function createMemoryChart(nodeName, dataToDisplay) {
             const canvasId = `memory-chart-${nodeName}`;
             const canvas = document.getElementById(canvasId);
@@ -1787,6 +1802,19 @@
                 const total = data.TotalMemory || data.totalMemory || 1;
                 return ((used / total) * 100).toFixed(2);
             });
+
+            // 计算动态纵坐标范围
+            const minValue = Math.min(...dataPoints);
+            const maxValue = Math.max(...dataPoints);
+
+            // 设置动态范围，最小刻度为2%
+            const rangePadding = 2; // 2%的边距
+            const suggestedMin = Math.max(0, Math.floor(minValue / 2) * 2 - rangePadding);
+            const suggestedMax = Math.min(100, Math.ceil(maxValue / 2) * 2 + rangePadding);
+
+            // 确保最小值和最大值之间有足够的间隔
+            const finalMin = suggestedMin >= 0 ? suggestedMin : 0;
+            const finalMax = suggestedMax <= 100 ? (suggestedMax - finalMin < 10 ? finalMin + 10 : suggestedMax) : 100;
 
             // 如果已存在图表，先销毁
             if (memoryCharts[nodeName]) {
@@ -1814,9 +1842,11 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true,
-                            max: 100,
+                            beginAtZero: false,
+                            min: finalMin,
+                            max: finalMax,
                             ticks: {
+                                stepSize: 2, // 最小刻度为2%
                                 callback: function (value) {
                                     return value + '%';
                                 }
