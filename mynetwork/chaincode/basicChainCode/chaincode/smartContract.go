@@ -94,15 +94,6 @@ func (s *SmartContract) QueryByRichAsJson(ctx contractapi.TransactionContextInte
 	return v, nil
 }
 
-// 查询数据并以json(bytes)形式返回
-func (s *SmartContract) QueryByKeyAsBytes(ctx contractapi.TransactionContextInterface, key string) ([]byte, error) {
-	v, err := ctx.GetStub().GetState(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read from world state: %v", err)
-	}
-	return v, nil
-}
-
 // 查询数据并以string形式返回
 func (s *SmartContract) QueryByKeyAsString(ctx contractapi.TransactionContextInterface, key string) (string, error) {
 	v, err := s.QueryByKey(ctx, key)

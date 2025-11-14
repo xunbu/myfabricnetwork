@@ -168,6 +168,10 @@ func PutJson(gw *client.Gateway, channelName string, key string, jsonData map[st
 	return SubmitTransaction(gw, channelName, "basic", "PutString", key, jsonString)
 }
 
+func GetValue(gw *client.Gateway, channelName string, key string) ([]byte, error) {
+	return EvaluateTransaction(gw, channelName, "basic", "QueryByKey", key)
+}
+
 // GetTransactionCount 返回通道中的交易总数
 func GetTransactionCount(gw *client.Gateway, channelName string) (uint64, error) {
 	// 复用EvaluateTransaction获取区块链信息

@@ -31,16 +31,18 @@ func main() {
 	defer gw.Close()
 	channelName := "mychannel"
 	// gateway.GetTransactionCount(gw, channelName)
-	m := map[string]any{
-		"first name":  "tom",
-		"second name": "hanks",
-	}
+	// m := map[string]any{
+	// 	"first name":  "tom",
+	// 	"second name": "hanks",
+	// }
 
-	v, err := gateway.PutJson(gw, channelName, "test", m)
+	// v, err := gateway.PutJson(gw, channelName, "test", m)
+	v, err := gateway.GetValue(gw, channelName, "test")
+	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKey", "test")
 	if err != nil {
 		fmt.Printf("error in EvaluateTransaction %v", err)
 	}
-	fmt.Printf("value:%v\n", v)
+	fmt.Printf("value:%s\n", v)
 
 	// 以下为admin-sdk
 	// peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
