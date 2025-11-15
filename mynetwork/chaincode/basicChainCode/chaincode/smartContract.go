@@ -3,6 +3,7 @@ package chaincode
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/v2/contractapi"
 )
@@ -137,4 +138,45 @@ func (s *SmartContract) DeleteByKey(ctx contractapi.TransactionContextInterface,
 		return err
 	}
 	return nil
+}
+
+type KeyHistory struct {
+	TxId      string    `json:"txId"`
+	Timestamp time.Time `json:"timestamp"`
+	IsDelete  bool      `json:"isDelete"`
+	Value     []byte    `json:"value"`
+}
+
+func (s *SmartContract) GetKeyHistory(ctx contractapi.TransactionContextInterface, key string) ([]KeyHistory, error) {
+	historyIter, err := ctx.GetStub().GetHistoryForKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get history for key %s: %v", key, err)
+	}
+	defer historyIter.Close()
+
+	var history []KeyHistory
+
+	for historyIter.HasNext() {
+		record, err := historyIter.Next()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read history record: %v", err)
+		}
+
+		// 转换时间戳
+		var timestamp time.Time
+		if record.Timestamp != nil {
+			timestamp = record.Timestamp.AsTime()
+		}
+
+		historyItem := KeyHistory{
+			TxId:      record.TxId,
+			Timestamp: timestamp,
+			IsDelete:  record.IsDelete,
+			Value:     record.Value,
+		}
+
+		history = append(history, historyItem)
+	}
+
+	return history, nil
 }

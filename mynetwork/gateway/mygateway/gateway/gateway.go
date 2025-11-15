@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric-gateway/pkg/hash"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
+	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/proto"
@@ -469,6 +470,41 @@ func GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichRe
 		return nil, err
 	}
 	return results, nil
+}
+
+func GetTxByID(gw *client.Gateway, channelName string, TxID string) {
+	v, err := EvaluateTransaction(gw, channelName, "qscc", "GetTransactionByID", channelName, TxID)
+	if err != nil {
+		fmt.Printf("error in EvaluateTransaction %v", err)
+		return
+	}
+
+	// 简单显示原始数据
+	fmt.Printf("原始数据长度: %d bytes\n", len(v))
+	// fmt.Printf("十六进制: %x\n", v)
+
+	// 基础解析
+	tx := &peer.ProcessedTransaction{}
+	if err := proto.Unmarshal(v, tx); err == nil {
+		fmt.Printf("验证码: %d\n", tx.ValidationCode)
+
+		if tx.TransactionEnvelope != nil && tx.TransactionEnvelope.Payload != nil {
+			payload := &common.Payload{}
+			if err := proto.Unmarshal(tx.TransactionEnvelope.Payload, payload); err == nil {
+				if payload.Header != nil {
+					// 解析通道头部
+					chHeader := &common.ChannelHeader{}
+					if err := proto.Unmarshal(payload.Header.ChannelHeader, chHeader); err == nil {
+						fmt.Printf("交易ID: %s\n", chHeader.TxId)
+						fmt.Printf("通道: %s\n", chHeader.ChannelId)
+						fmt.Printf("类型: %s\n", common.HeaderType_name[chHeader.Type])
+						fmt.Printf("时间: %v\n", chHeader.Timestamp.AsTime())
+					}
+				}
+			}
+		}
+	}
+	parseReadWriteSets(tx)
 }
 
 // FormatJSON 格式化JSON数据
