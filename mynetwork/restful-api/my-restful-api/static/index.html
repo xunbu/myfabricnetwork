@@ -1535,6 +1535,7 @@
          * 1. Uses correct camelCase field names (e.g., item.txId) from the JSON response.
          * 2. Handles base64 decoding of the `value` field.
          * 3. Robustly checks if the decoded value is JSON for pretty-printing.
+         * 4. [NEW FIX] Correctly decodes UTF-8 characters (like Chinese) from the Base64 value.
          */
         async function showKeyHistory(key) {
             const modal = document.getElementById('key-history-modal');
@@ -1573,15 +1574,28 @@
                         valueDisplay = '<i>DELETED</i>';
                     } else {
                         try {
-                            const decodedValue = atob(base64Value);
+                            // ******* THE FIX IS HERE *******
+                            // Decode Base64 to a binary string
+                            const binaryString = atob(base64Value);
+                            // Create a byte array (Uint8Array) from the binary string
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }
+                            // Use TextDecoder to decode the byte array as UTF-8
+                            const decodedValue = new TextDecoder('utf-8').decode(bytes);
+                            // ********************************
+
+                            // Now that we have a correct string, try to parse it as JSON
                             try {
                                 const parsedJson = JSON.parse(decodedValue);
                                 valueDisplay = `<pre class="json-value">${JSON.stringify(parsedJson, null, 2)}</pre>`;
                             } catch (jsonError) {
+                                // If not JSON, display as a plain string
                                 valueDisplay = escapeHtml(decodedValue);
                             }
                         } catch (decodeError) {
-                            console.error('Base64 decoding error:', decodeError);
+                            console.error('Base64/UTF-8 decoding error:', decodeError);
                             valueDisplay = '<i style="color:red;">[Invalid Data]</i>';
                         }
                     }
@@ -1603,8 +1617,6 @@
                 loading.style.display = 'none';
             }
         }
-
-
         // Show Transaction Detail Modal
         async function showTxDetail(txId) {
             const modal = document.getElementById('tx-detail-modal');

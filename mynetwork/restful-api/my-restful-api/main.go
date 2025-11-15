@@ -95,6 +95,7 @@ func main() {
 	r.GET("/valuechain/getAllData", getAllData)
 	r.GET("/valuechain/getKeyHistory", getKeyHistory)
 	r.GET("/valuechain/getTxByID", getTxByID)
+	r.GET("/valuechain/putValue", PutValue)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -303,4 +304,18 @@ func getTxByID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, Txinfo)
+}
+
+func PutValue(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	chaincodeName := c.MustGet("chaincodeName").(string)
+	key := c.Query("key")
+	value := c.Query("value")
+
+	_, err := gateway.PutString(gw, channelName, chaincodeName, key, value)
+	if err != nil {
+		return
+	}
+	c.Status(http.StatusOK)
 }
