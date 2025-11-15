@@ -39,6 +39,10 @@ func main() {
 
 	defer gw.Close()
 	channelName := "mychannel"
+	chaincodeGateway, err := admin.GetChaincodeGateway(clientConnection, mspID, cryptoPath, certPath, keyPath)
+	if err != nil {
+		panic(err)
+	}
 	chaincodePeer, err := admin.GetChaincodePeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		panic(err)
@@ -73,6 +77,7 @@ func main() {
 		c.Set("connection", clientConnection)
 		c.Set("gateway", gw)
 		c.Set("channelName", channelName)
+		c.Set("chaincodeGateway", chaincodeGateway)
 		c.Set("chaincodePeer", chaincodePeer)
 		c.Set("discoveryPeer", discoveryPeer)
 		c.Next()
@@ -93,7 +98,7 @@ func getValueChainInfo(c *gin.Context) {
 	conn := c.MustGet("connection").(*grpc.ClientConn)
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-	chaincodePeer := c.MustGet("chaincodePeer").(*chaincode.Peer)
+	chaincodeGateway := c.MustGet("chaincodeGateway").(*chaincode.Gateway)
 	discoveryPeer := c.MustGet("discoveryPeer").(*discovery.Peer)
 	response := gin.H{}
 
@@ -117,7 +122,7 @@ func getValueChainInfo(c *gin.Context) {
 		return
 	}
 
-	response["chainCodeCount"], err = admin.GetChaincodeCount(chaincodePeer)
+	response["chainCodeCount"], err = admin.GetChaincodeCount(chaincodeGateway, channelName)
 	if err != nil {
 		c.Error(err)
 		return
@@ -232,7 +237,7 @@ func getAllData(c *gin.Context) {
 	// 	Value  interface{} `json:"value"`//Value有string和json([]byte)两种
 	// 	IsJSON bool        `json:"isJson"`
 	// }
-	v, err := gateway.GetAllData(gw, channelName)
+	v, err := gateway.GetAllData(gw, channelName, "basic")
 	if err != nil {
 		return
 	}

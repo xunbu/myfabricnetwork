@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -139,7 +138,6 @@ func readFirstFile(dirPath string) ([]byte, error) {
 	return data, nil
 }
 
-// ============ Gateway操作函数 =======
 // EvaluateTransaction 执行查询交易
 func EvaluateTransaction(gw *client.Gateway, channelName, chainCodeName, funcName string, args ...string) ([]byte, error) {
 	network := gw.GetNetwork(channelName)
@@ -154,23 +152,23 @@ func SubmitTransaction(gw *client.Gateway, channelName, chainCodeName, funcName 
 	return contract.SubmitTransaction(funcName, args...)
 }
 
-// 往Basic链码写入数据
-func PutString(gw *client.Gateway, channelName string, key string, data string) ([]byte, error) {
-
-	return SubmitTransaction(gw, channelName, "basic", "PutString", key, data)
+// 写入数据
+func PutString(gw *client.Gateway, channelName string, chaincodeName string, key string, data string) ([]byte, error) {
+	return SubmitTransaction(gw, channelName, chaincodeName, "PutString", key, data)
 }
 
-func PutJson(gw *client.Gateway, channelName string, key string, jsonData map[string]interface{}) ([]byte, error) {
-	jsonBytes, err := json.Marshal(jsonData)
+// 写入map
+func PutMap(gw *client.Gateway, channelName string, chaincodeName string, key string, jsonMap map[string]interface{}) ([]byte, error) {
+	jsonBytes, err := json.Marshal(jsonMap)
 	if err != nil {
 		return nil, fmt.Errorf("JSON 序列化失败: %w", err)
 	}
 	jsonString := string(jsonBytes)
-	return SubmitTransaction(gw, channelName, "basic", "PutString", key, jsonString)
+	return SubmitTransaction(gw, channelName, chaincodeName, "PutString", key, jsonString)
 }
 
-func GetValue(gw *client.Gateway, channelName string, key string) ([]byte, error) {
-	return EvaluateTransaction(gw, channelName, "basic", "QueryByKey", key)
+func GetValue(gw *client.Gateway, channelName string, chaincodeName string, key string) ([]byte, error) {
+	return EvaluateTransaction(gw, channelName, chaincodeName, "QueryByKey", key)
 }
 
 // GetTransactionCount 返回通道中的交易总数
@@ -339,107 +337,6 @@ func GetBlockListByPage(gw *client.Gateway, channelName string, pageNum uint64, 
 	return blockList, nil
 }
 
-func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, includeTxDetails bool) (*BlockInfo, error) {
-	var block common.Block
-	if err := proto.Unmarshal(blockBytes, &block); err != nil {
-		return nil, fmt.Errorf("解析区块失败: %w", err)
-	}
-
-	blockHeader := block.Header
-	if blockHeader == nil {
-		return nil, fmt.Errorf("区块头信息为空")
-	}
-
-	// 解析区块数据大小
-	blockSize := int64(len(blockBytes))
-
-	// 从第一个交易中获取时间戳和创建者信息
-	timestamp, blockCreator, txIDs := extractBlockMetadata(block.Data.Data, includeTxDetails)
-
-	// 对于创世区块（区块0），设置默认时间戳
-	if blockNumber == 0 && timestamp.IsZero() {
-		timestamp = time.Now().AddDate(-1, 0, 0) // 设置为一年前
-	}
-
-	return &BlockInfo{
-		BlockHash:    fmt.Sprintf("%x", blockHeader.DataHash),
-		PreviousHash: fmt.Sprintf("%x", blockHeader.PreviousHash),
-		MerkleRoot:   fmt.Sprintf("%x", blockHeader.DataHash),
-		BlockNumber:  blockNumber,
-		TxCount:      uint64(len(block.Data.Data)),
-		BlockSize:    blockSize,
-		Timestamp:    timestamp,
-		ChannelID:    channelName,
-		BlockCreator: blockCreator,
-		TxIDs:        txIDs,
-	}, nil
-}
-
-// 从区块交易中提取元数据
-func extractBlockMetadata(blockData [][]byte, includeTxDetails bool) (time.Time, string, []string) {
-	if len(blockData) == 0 {
-		return time.Time{}, "", nil
-	}
-
-	var timestamp time.Time
-	var blockCreator string
-	var txIDs []string
-
-	// 遍历所有交易，获取时间戳和创建者信息
-	for i, data := range blockData {
-		var envelope common.Envelope
-		if err := proto.Unmarshal(data, &envelope); err != nil {
-			continue
-		}
-
-		var payload common.Payload
-		if err := proto.Unmarshal(envelope.Payload, &payload); err != nil {
-			continue
-		}
-
-		var channelHeader common.ChannelHeader
-		if err := proto.Unmarshal(payload.Header.ChannelHeader, &channelHeader); err != nil {
-			continue
-		}
-
-		// 使用第一个有效的交易时间戳作为区块时间戳
-		if timestamp.IsZero() {
-			timestamp = time.Unix(channelHeader.Timestamp.Seconds, int64(channelHeader.Timestamp.Nanos))
-		}
-
-		// 从第一个交易获取创建者信息
-		if i == 0 && blockCreator == "" {
-			blockCreator = extractCreatorFromSignature(payload.Header.SignatureHeader)
-		}
-
-		// 如果需要包含交易详情，收集交易ID
-		if includeTxDetails {
-			txIDs = append(txIDs, channelHeader.TxId)
-		}
-	}
-
-	return timestamp, blockCreator, txIDs
-}
-
-// 从签名头中提取创建者信息
-func extractCreatorFromSignature(signatureHeaderBytes []byte) string {
-	if len(signatureHeaderBytes) == 0 {
-		return ""
-	}
-
-	var signatureHeader common.SignatureHeader
-	if err := proto.Unmarshal(signatureHeaderBytes, &signatureHeader); err != nil {
-		return ""
-	}
-
-	if len(signatureHeader.Creator) > 0 {
-		// 简化显示：返回创建者信息的简短哈希
-		return fmt.Sprintf("Creator:%x", signatureHeader.Creator[:min(8, len(signatureHeader.Creator))])
-	}
-
-	return ""
-}
-
 // 根据区块号获取区块详情
 func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*BlockInfo, error) {
 	// 复用EvaluateTransaction获取区块数据
@@ -457,10 +354,8 @@ func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*Bl
 	return blockInfo, nil
 }
 
-// =============end
-
-func GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error) {
-	v, err := EvaluateTransaction(gw, channelName, "basic", "QueryByRange", "", "")
+func GetAllData(gw *client.Gateway, channelName string, chaincodeName string) ([]chaincode.QueryRichResult, error) {
+	v, err := EvaluateTransaction(gw, channelName, chaincodeName, "QueryByRange", "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -505,13 +400,4 @@ func GetTxByID(gw *client.Gateway, channelName string, TxID string) {
 		}
 	}
 	parseReadWriteSets(tx)
-}
-
-// FormatJSON 格式化JSON数据
-func FormatJSON(data []byte) (string, error) {
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, data, "", "  "); err != nil {
-		return "", fmt.Errorf("格式化JSON失败: %w", err)
-	}
-	return prettyJSON.String(), nil
 }

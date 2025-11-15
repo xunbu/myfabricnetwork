@@ -11,8 +11,6 @@ require (
 	guolong.com/basic-chaincode v0.0.0-00010101000000-000000000000
 )
 
-require github.com/golang/protobuf v1.5.4 // indirect
-
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
@@ -21,7 +19,6 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/hyperledger/fabric-chaincode-go/v2 v2.0.0 // indirect
 	github.com/hyperledger/fabric-contract-api-go/v2 v2.2.0 // indirect
-	github.com/hyperledger/fabric-protos-go v0.3.7
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect

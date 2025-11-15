@@ -33,8 +33,6 @@ github.com/hyperledger/fabric-contract-api-go/v2 v2.2.0 h1:rmUoBmciB0GL/miqcbJmJ
 github.com/hyperledger/fabric-contract-api-go/v2 v2.2.0/go.mod h1:FeWeO/jwGjiME7ak3GufqKIcwkejtzrDG4QxbfKydWs=
 github.com/hyperledger/fabric-gateway v1.7.0 h1:bd1quU8qYPYqYO69m1tPIDSjB+D+u/rBJfE1eWFcpjY=
 github.com/hyperledger/fabric-gateway v1.7.0/go.mod h1:TItDGnq71eJcgz5TW+m5Sq3kWGp0AEI1HPCNxj0Eu7k=
-github.com/hyperledger/fabric-protos-go v0.3.7 h1:4Dp6esioyrbHaRZY8HcQG/ZN6ABPXcVEmGZWJlKc9mE=
-github.com/hyperledger/fabric-protos-go v0.3.7/go.mod h1:F+MmFQ9mnJzxB9Gus13XMoXrSJbIK/2QJOanEUZ5zoo=
 github.com/hyperledger/fabric-protos-go-apiv2 v0.3.4 h1:YJrd+gMaeY0/vsN0aS0QkEKTivGoUnSRIXxGJ7KI+Pc=
 github.com/hyperledger/fabric-protos-go-apiv2 v0.3.4/go.mod h1:bau/6AJhvEcu9GKKYHlDXAxXKzYNfhP6xu2GXuxEcFk=
 github.com/josharian/intern v1.0.0 h1:vlS4z54oSdjm0bgjRigI+G1HpF+tI+9rE5LLzOg8HmY=
