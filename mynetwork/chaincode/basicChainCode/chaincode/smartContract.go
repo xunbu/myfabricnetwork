@@ -113,6 +113,21 @@ func (s *SmartContract) PutString(ctx contractapi.TransactionContextInterface, k
 	return nil
 }
 
+func (s *SmartContract) PutKVs(ctx contractapi.TransactionContextInterface, kvString string) error {
+	var kvmap map[string]string
+	err := json.Unmarshal([]byte(kvString), &kvmap)
+	if err != nil {
+		return fmt.Errorf("fail in unmarshal kvString %w", kvString)
+	}
+	for k, v := range kvmap {
+		err := ctx.GetStub().PutState(k, []byte(v))
+		if err != nil {
+			return fmt.Errorf("error in PutState, key:%v,value:%v", k, v)
+		}
+	}
+	return nil
+}
+
 // 更新数据 (string)
 func (s *SmartContract) UpdateString(ctx contractapi.TransactionContextInterface, key string, value string) error {
 	exists, err := s.KeyExists(ctx, key)
@@ -158,6 +173,7 @@ func (s *SmartContract) GetKeyHistory(ctx contractapi.TransactionContextInterfac
 
 	for historyIter.HasNext() {
 		record, err := historyIter.Next()
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to read history record: %v", err)
 		}
@@ -167,12 +183,19 @@ func (s *SmartContract) GetKeyHistory(ctx contractapi.TransactionContextInterfac
 		if record.Timestamp != nil {
 			timestamp = record.Timestamp.AsTime()
 		}
+		var recordValue []byte
+		if record.IsDelete {
+			// 如果是删除记录，将 Value 设为空字节切片，而不是 nil
+			recordValue = []byte{}
+		} else {
+			recordValue = record.Value
+		}
 
 		historyItem := KeyHistory{
 			TxId:      record.TxId,
 			Timestamp: timestamp,
 			IsDelete:  record.IsDelete,
-			Value:     record.Value,
+			Value:     recordValue,
 		}
 
 		history = append(history, historyItem)

@@ -319,3 +319,15 @@ func PutValue(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 }
+
+func DeleteKey(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	chaincodeName := c.MustGet("chaincodeName").(string)
+	key := c.Query("key")
+	_, err := gateway.DeleteKey(gw, channelName, chaincodeName, key)
+	if err != nil {
+		return
+	}
+	c.Status(http.StatusOK)
+}

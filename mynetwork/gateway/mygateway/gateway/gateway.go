@@ -167,8 +167,21 @@ func PutMap(gw *client.Gateway, channelName string, chaincodeName string, key st
 	return SubmitTransaction(gw, channelName, chaincodeName, "PutString", key, jsonString)
 }
 
+// 写入map
+func PutKvs(gw *client.Gateway, channelName string, chaincodeName string, KVMap map[string]string) ([]byte, error) {
+	v, err := json.Marshal(KVMap)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(v))
+	return SubmitTransaction(gw, channelName, chaincodeName, "PutKVs", string(v))
+}
+
 func GetValue(gw *client.Gateway, channelName string, chaincodeName string, key string) ([]byte, error) {
 	return EvaluateTransaction(gw, channelName, chaincodeName, "QueryByKey", key)
+}
+func DeleteKey(gw *client.Gateway, channelName string, chaincodeName string, key string) ([]byte, error) {
+	return SubmitTransaction(gw, channelName, chaincodeName, "DeleteByKey", key)
 }
 
 // GetTransactionCount 返回通道中的交易总数

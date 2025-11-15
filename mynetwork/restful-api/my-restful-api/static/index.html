@@ -714,11 +714,24 @@
             cursor: pointer;
             font-size: 0.8rem;
             font-weight: 600;
+            margin-right: 5px;
+            /* Added for spacing */
+        }
+
+        .action-button.delete {
+            /* Style for delete button */
+            background-color: #ffcdd2;
+            color: #c62828;
         }
 
         .action-button:hover {
             background: #c5cae9;
         }
+
+        .action-button.delete:hover {
+            background-color: #ef9a9a;
+        }
+
 
         .clickable-txid {
             font-family: monospace;
@@ -747,6 +760,37 @@
             word-break: break-all;
             font-family: monospace;
         }
+
+        /* Form styles for modal */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            margin-top: 1.5rem;
+            text-align: right;
+        }
+
 
         /* 响应式设计 */
         @media (max-width: 768px) {
@@ -1072,7 +1116,10 @@
                             <input type="text" id="dataSearch" placeholder="搜索键或值...">
                             <button class="refresh-button" id="searchData">搜索</button>
                         </div>
-                        <button class="refresh-button" id="refreshData">刷新数据</button>
+                        <div>
+                            <button class="refresh-button" id="addNewDataBtn">添加新数据</button>
+                            <button class="refresh-button" id="refreshData">刷新数据</button>
+                        </div>
                     </div>
 
                     <div id="dataTableContainer">
@@ -1141,6 +1188,36 @@
             </div>
         </div>
     </div>
+
+    <!-- Put Value Modal -->
+    <div id="put-value-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add / Update Data</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="put-value-form">
+                    <div id="put-value-error" class="error-message" style="display: none;"></div>
+                    <div class="form-group">
+                        <label for="put-key">Key</label>
+                        <input type="text" id="put-key" name="key" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="put-value">Value</label>
+                        <textarea id="put-value" name="value" required></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="refresh-button">
+                            <span class="submit-text">Submit</span>
+                            <span class="loading" style="display: none;"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // 全局变量
@@ -1227,6 +1304,18 @@
                 loadChainData();
             });
 
+            // Add New Data button
+            document.getElementById('addNewDataBtn').addEventListener('click', () => {
+                const modal = document.getElementById('put-value-modal');
+                modal.querySelector('form').reset();
+                modal.querySelector('#put-value-error').style.display = 'none';
+                modal.style.display = 'flex';
+            });
+
+            // Add/Update form submission
+            document.getElementById('put-value-form').addEventListener('submit', handlePutValueSubmit);
+
+
             // 数据搜索
             document.getElementById('searchData').addEventListener('click', function () {
                 filterChainData();
@@ -1286,6 +1375,12 @@
                     const key = e.target.dataset.key;
                     showKeyHistory(key);
                 }
+                // Delete Key Button
+                if (e.target.matches('.delete-key-btn')) {
+                    e.preventDefault();
+                    const key = e.target.dataset.key;
+                    handleDeleteKey(key);
+                }
                 // Clickable TxID
                 if (e.target.matches('.clickable-txid')) {
                     e.preventDefault();
@@ -1294,6 +1389,74 @@
                 }
             });
         }
+
+        // =========================================================
+        // == NEW FUNCTIONALITY: Put Value and Delete Key        ==
+        // =========================================================
+
+        async function handlePutValueSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const key = form.querySelector('#put-key').value;
+            const value = form.querySelector('#put-value').value;
+            const errorDiv = form.querySelector('#put-value-error');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const submitText = submitButton.querySelector('.submit-text');
+            const loadingSpinner = submitButton.querySelector('.loading');
+
+            // Show loading state
+            submitText.style.display = 'none';
+            loadingSpinner.style.display = 'inline-block';
+            submitButton.disabled = true;
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch(`/valuechain/putValue?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to save data. Server responded with status ${response.status}`);
+                }
+
+                // Success
+                document.getElementById('put-value-modal').style.display = 'none';
+                await loadChainData(); // Refresh the data table
+
+            } catch (error) {
+                console.error('Error putting value:', error);
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                // Hide loading state
+                submitText.style.display = 'inline-block';
+                loadingSpinner.style.display = 'none';
+                submitButton.disabled = false;
+            }
+        }
+
+        async function handleDeleteKey(key) {
+            if (!confirm(`Are you sure you want to delete the key "${key}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                showLoading('data-page');
+                const response = await fetch(`/valuechain/deleteKey?key=${encodeURIComponent(key)}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to delete key. Server responded with status ${response.status}`);
+                }
+
+                // Success, refresh the data
+                await loadChainData();
+
+            } catch (error) {
+                console.error('Error deleting key:', error);
+                alert(error.message); // Simple alert for error feedback
+            } finally {
+                hideLoading('data-page');
+            }
+        }
+
 
         // 设置主页自动刷新
         function setupHomeAutoRefresh() {
@@ -1890,7 +2053,10 @@
                     }
                     </td>
                     <td>${displayIsJson ? 'JSON' : '字符串'}</td>
-                    <td><button class="action-button view-history-btn" data-key="${escapeHtml(key)}">View History</button></td>
+                    <td>
+                        <button class="action-button view-history-btn" data-key="${escapeHtml(key)}">History</button>
+                        <button class="action-button delete delete-key-btn" data-key="${escapeHtml(key)}">Delete</button>
+                    </td>
                 `;
 
                 tableBody.appendChild(row);
