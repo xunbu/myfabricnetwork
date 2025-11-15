@@ -367,37 +367,97 @@ func GetAllData(gw *client.Gateway, channelName string, chaincodeName string) ([
 	return results, nil
 }
 
-func GetTxByID(gw *client.Gateway, channelName string, TxID string) {
+type Txinfo struct {
+	TxId      string
+	ChannelId string
+	Type      string
+	Timestamp time.Time
+
+	Size           int
+	ValidationCode int
+	ChainCodeInfos []*ChainCodeInfo
+}
+
+type ChainCodeInfo struct {
+	ChainCodeName string
+	Args          []string
+}
+
+func (txInfo *Txinfo) String() string {
+	return fmt.Sprintf("TxId:%v\nChannelId:%v\nType:%v\nTimestamp:%v\nValidationCode:%v\nChainCodeInfos:\n%v\n", txInfo.TxId, txInfo.ChannelId, txInfo.Type, txInfo.Timestamp, txInfo.ValidationCode, txInfo.ChainCodeInfos)
+}
+
+func (chainCodeInfo *ChainCodeInfo) String() string {
+	return fmt.Sprintf("ChainCodeName:%v,args:%v", chainCodeInfo.ChainCodeName, chainCodeInfo.Args)
+}
+func GetTxByID(gw *client.Gateway, channelName string, TxID string) (*Txinfo, error) {
 	v, err := EvaluateTransaction(gw, channelName, "qscc", "GetTransactionByID", channelName, TxID)
 	if err != nil {
-		fmt.Printf("error in EvaluateTransaction %v", err)
-		return
+		return nil, fmt.Errorf("error in EvaluateTransaction %w", err)
 	}
 
 	// 简单显示原始数据
 	fmt.Printf("原始数据长度: %d bytes\n", len(v))
 	// fmt.Printf("十六进制: %x\n", v)
 
+	txInfo := &Txinfo{Size: len(v)}
+
 	// 基础解析
 	tx := &peer.ProcessedTransaction{}
-	if err := proto.Unmarshal(v, tx); err == nil {
-		fmt.Printf("验证码: %d\n", tx.ValidationCode)
+	err = proto.Unmarshal(v, tx)
+	if err != nil {
+		return nil, err
+	}
 
-		if tx.TransactionEnvelope != nil && tx.TransactionEnvelope.Payload != nil {
-			payload := &common.Payload{}
-			if err := proto.Unmarshal(tx.TransactionEnvelope.Payload, payload); err == nil {
-				if payload.Header != nil {
-					// 解析通道头部
-					chHeader := &common.ChannelHeader{}
-					if err := proto.Unmarshal(payload.Header.ChannelHeader, chHeader); err == nil {
-						fmt.Printf("交易ID: %s\n", chHeader.TxId)
-						fmt.Printf("通道: %s\n", chHeader.ChannelId)
-						fmt.Printf("类型: %s\n", common.HeaderType_name[chHeader.Type])
-						fmt.Printf("时间: %v\n", chHeader.Timestamp.AsTime())
-					}
-				}
-			}
+	txInfo.ValidationCode = int(tx.ValidationCode)
+
+	if tx.TransactionEnvelope == nil || tx.TransactionEnvelope.Payload == nil {
+		return txInfo, nil
+	}
+
+	payload := &common.Payload{}
+	err = proto.Unmarshal(tx.TransactionEnvelope.Payload, payload)
+	if err != nil {
+		return txInfo, err
+	}
+
+	if payload.Header == nil {
+		return txInfo, nil
+	}
+
+	chHeader := &common.ChannelHeader{}
+	err = proto.Unmarshal(payload.Header.ChannelHeader, chHeader)
+	if err != nil {
+		return txInfo, err
+	}
+	fmt.Printf("交易ID: %s\n", chHeader.TxId)
+	fmt.Printf("通道: %s\n", chHeader.ChannelId)
+	fmt.Printf("类型: %s\n", common.HeaderType_name[chHeader.Type])
+	fmt.Printf("时间: %v\n", chHeader.Timestamp.AsTime())
+	txInfo.TxId = chHeader.TxId
+	txInfo.ChannelId = chHeader.ChannelId
+	txInfo.Type = common.HeaderType_name[chHeader.Type]
+	txInfo.Timestamp = chHeader.Timestamp.AsTime()
+
+	if common.HeaderType(chHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		transaction := &peer.Transaction{}
+		err = proto.Unmarshal(payload.Data, transaction)
+		if err != nil {
+			return nil, err
+		}
+		for _, action := range transaction.Actions {
+			// 解析 ChaincodeActionPayload 等
+			v := &peer.ChaincodeActionPayload{}
+			proto.Unmarshal(action.Payload, v)
+			v2 := &peer.ChaincodeProposalPayload{}
+			proto.Unmarshal(v.ChaincodeProposalPayload, v2)
+			invocationSpec := &peer.ChaincodeInvocationSpec{}
+			proto.Unmarshal(v2.Input, invocationSpec)
+			spec := invocationSpec.ChaincodeSpec
+			txInfo.ChainCodeInfos = append(txInfo.ChainCodeInfos, &ChainCodeInfo{ChainCodeName: spec.ChaincodeId.Name, Args: convertBytesToStrings(spec.Input.Args)})
 		}
 	}
-	parseReadWriteSets(tx)
+
+	return txInfo, nil
+	// parseReadWriteSets(tx)
 }

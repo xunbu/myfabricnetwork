@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"guolong.com/basic-chaincode/chaincode"
 	"guolong.com/fabric-gateway/gateway"
 )
 
@@ -45,14 +43,14 @@ func main() {
 	// 	fmt.Printf("error in EvaluateTransaction %v", err)
 	// }
 	// fmt.Printf("value:%s\n", v)
-	// gateway.GetTxByID(gw, channelName, "287d49979e733fc0c528b58804ef3f1a29fe1bb47a530b949915e4efdea022d9")
-	v, _ := gateway.EvaluateTransaction(gw, channelName, "basic", "GetKeyHistory", "author")
-	kh := &[]chaincode.KeyHistory{}
-	json.Unmarshal(v, &kh)
-	// fmt.Printf("%v\n", kh)
-	for _, v2 := range *kh {
-		fmt.Printf("交易号:%s,值%s,时间戳%s\n", v2.TxId, v2.Value, v2.Timestamp)
-	}
+	v, _ := gateway.GetTxByID(gw, channelName, "287d49979e733fc0c528b58804ef3f1a29fe1bb47a530b949915e4efdea022d9")
+	fmt.Println(v)
+	// v, _ := gateway.EvaluateTransaction(gw, channelName, "basic", "GetKeyHistory", "author")
+	// kh := &[]chaincode.KeyHistory{}
+	// json.Unmarshal(v, &kh)
+	// for _, v2 := range *kh {
+	// 	fmt.Printf("交易号:%s,值%s,时间戳%s\n", v2.TxId, v2.Value, v2.Timestamp)
+	// }
 
 	// 以下为admin-sdk
 	// peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)

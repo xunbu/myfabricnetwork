@@ -210,3 +210,11 @@ func FormatJSON(data []byte) (string, error) {
 	}
 	return prettyJSON.String(), nil
 }
+
+func convertBytesToStrings(byteSlices [][]byte) []string {
+	strSlice := make([]string, len(byteSlices))
+	for i, b := range byteSlices {
+		strSlice[i] = string(b)
+	}
+	return strSlice
+}
