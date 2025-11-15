@@ -663,6 +663,91 @@
             color: #666;
         }
 
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .action-button {
+            background: #e8eaf6;
+            color: #1a237e;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .action-button:hover {
+            background: #c5cae9;
+        }
+
+        .clickable-txid {
+            font-family: monospace;
+            color: #283593;
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .clickable-txid:hover {
+            color: #1a237e;
+        }
+
+        .tx-detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 10px 20px;
+        }
+
+        .tx-detail-label {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .tx-detail-value {
+            word-break: break-all;
+            font-family: monospace;
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .header-content {
@@ -997,6 +1082,7 @@
                                     <th>键</th>
                                     <th>值</th>
                                     <th>类型</th>
+                                    <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="dataTableBody">
@@ -1013,6 +1099,47 @@
                 <p>区块链浏览器 &copy; 2025</p>
             </div>
         </footer>
+    </div>
+
+    <!-- Key History Modal -->
+    <div id="key-history-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Key History</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3 id="history-key-name" style="word-break: break-all;"></h3>
+                <div id="history-loading" style="display: none;" class="loading"></div>
+                <div id="history-error" class="error-message" style="display: none;"></div>
+                <table class="data-table" style="margin-top: 1rem;">
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Timestamp</th>
+                            <th>Value</th>
+                            <th>Is Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keyHistoryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div id="tx-detail-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Transaction Details</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="tx-loading" style="display: none;" class="loading"></div>
+                <div id="tx-error" class="error-message" style="display: none;"></div>
+                <div id="tx-details-content"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1143,6 +1270,29 @@
                     switchTab(tabId);
                 });
             });
+
+            // Modal Close Buttons
+            document.querySelectorAll('.modal-close').forEach(button => {
+                button.addEventListener('click', () => {
+                    button.closest('.modal-overlay').style.display = 'none';
+                });
+            });
+
+            // Event Delegation for dynamic content
+            document.body.addEventListener('click', function (e) {
+                // View History Button
+                if (e.target.matches('.view-history-btn')) {
+                    e.preventDefault();
+                    const key = e.target.dataset.key;
+                    showKeyHistory(key);
+                }
+                // Clickable TxID
+                if (e.target.matches('.clickable-txid')) {
+                    e.preventDefault();
+                    const txId = e.target.dataset.txid;
+                    showTxDetail(txId);
+                }
+            });
         }
 
         // 设置主页自动刷新
@@ -1256,15 +1406,6 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
 
-                // 根据gateway代码，后端返回的数据结构应该是：
-                // {
-                //   "blockHeight": number,
-                //   "totalTransactionCount": number,
-                //   "orgCount": number,
-                //   "chainCodeCount": number,
-                //   "nodeCount": number
-                // }
-
                 document.getElementById('blockHeight').textContent = data.blockHeight || 0;
                 document.getElementById('totalTransactionCount').textContent = data.totalTransactionCount || 0;
                 document.getElementById('orgCount').textContent = data.orgCount || 0;
@@ -1287,7 +1428,6 @@
                 const response = await fetch(`/valuechain/getBlockByPage?pageNum=${pageNum}&pageSize=${pageSize}`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-                // 根据gateway代码，返回的是BlockInfo数组
                 const blocks = await response.json();
 
                 const tableBody = document.getElementById('blocksTableBody');
@@ -1304,7 +1444,6 @@
                     row.className = 'block-row';
                     row.setAttribute('data-block-num', block.BlockNumber || block.blockNumber);
 
-                    // 格式化时间戳
                     const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString() :
                         block.timestamp ? new Date(block.timestamp).toLocaleString() : '-';
 
@@ -1318,7 +1457,6 @@
                         <td>${formatBytes(block.BlockSize || block.blockSize || 0)}</td>
                     `;
 
-                    // 添加点击事件
                     row.addEventListener('click', function () {
                         showBlockDetail(block.BlockNumber || block.blockNumber);
                     });
@@ -1346,7 +1484,6 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const block = await response.json();
 
-                // 填充区块详情数据 - 适配两种可能的字段命名方式
                 document.getElementById('detail-blockNumber').textContent = block.BlockNumber || block.blockNumber || 0;
                 document.getElementById('detail-blockHash').textContent = block.BlockHash || block.blockHash || '';
                 document.getElementById('detail-previousHash').textContent = block.PreviousHash || block.previousHash || '';
@@ -1369,7 +1506,7 @@
                     txIds.forEach(txId => {
                         const li = document.createElement('li');
                         li.className = 'transaction-item';
-                        li.innerHTML = `<span class="transaction-id">${txId}</span>`;
+                        li.innerHTML = `<span class="clickable-txid" data-txid="${txId}">${txId}</span>`;
                         transactionList.appendChild(li);
                     });
                 } else {
@@ -1379,13 +1516,155 @@
                     transactionList.appendChild(li);
                 }
 
-                // 显示详情页面
                 showBlockDetailPage();
                 hideLoading('block-detail-page');
             } catch (error) {
                 console.error('加载区块详情失败:', error);
                 showError('block-detail-page', '加载区块详情失败');
                 hideLoading('block-detail-page');
+            }
+        }
+
+        // =========================================================
+        // == NEW & CORRECTED FUNCTIONALITY: Key History & TX Details ==
+        // =========================================================
+
+        /**
+         * CORRECTED: Show Key History Modal
+         * Fixes:
+         * 1. Uses correct camelCase field names (e.g., item.txId) from the JSON response.
+         * 2. Handles base64 decoding of the `value` field.
+         * 3. Robustly checks if the decoded value is JSON for pretty-printing.
+         */
+        async function showKeyHistory(key) {
+            const modal = document.getElementById('key-history-modal');
+            const loading = document.getElementById('history-loading');
+            const errorDiv = document.getElementById('history-error');
+            const tableBody = document.getElementById('keyHistoryTableBody');
+            const keyName = document.getElementById('history-key-name');
+
+            modal.style.display = 'flex';
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+            tableBody.innerHTML = '';
+            keyName.textContent = `History for key: "${key}"`;
+
+            try {
+                const response = await fetch(`/valuechain/getKeyHistory?key=${encodeURIComponent(key)}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const history = await response.json();
+
+                if (!history || history.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No history found for this key.</td></tr>';
+                    return;
+                }
+
+                history.forEach(item => {
+                    const row = document.createElement('tr');
+
+                    // Correctly access camelCase fields from the Go backend
+                    const txId = item.txId;
+                    const timestamp = item.timestamp;
+                    const isDelete = item.isDelete;
+                    const base64Value = item.value || '';
+                    let valueDisplay = '';
+
+                    if (isDelete) {
+                        valueDisplay = '<i>DELETED</i>';
+                    } else {
+                        try {
+                            const decodedValue = atob(base64Value);
+                            try {
+                                const parsedJson = JSON.parse(decodedValue);
+                                valueDisplay = `<pre class="json-value">${JSON.stringify(parsedJson, null, 2)}</pre>`;
+                            } catch (jsonError) {
+                                valueDisplay = escapeHtml(decodedValue);
+                            }
+                        } catch (decodeError) {
+                            console.error('Base64 decoding error:', decodeError);
+                            valueDisplay = '<i style="color:red;">[Invalid Data]</i>';
+                        }
+                    }
+
+                    row.innerHTML = `
+                        <td><span class="clickable-txid" data-txid="${txId}">${txId.substring(0, 15)}...</span></td>
+                        <td>${new Date(timestamp).toLocaleString()}</td>
+                        <td>${valueDisplay}</td>
+                        <td>${isDelete ? 'Yes' : 'No'}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+            } catch (error) {
+                console.error('Failed to load key history:', error);
+                errorDiv.textContent = 'Failed to load key history.';
+                errorDiv.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+
+        // Show Transaction Detail Modal
+        async function showTxDetail(txId) {
+            const modal = document.getElementById('tx-detail-modal');
+            const loading = document.getElementById('tx-loading');
+            const errorDiv = document.getElementById('tx-error');
+            const contentDiv = document.getElementById('tx-details-content');
+
+            modal.style.display = 'flex';
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+            contentDiv.innerHTML = '';
+
+            try {
+                const response = await fetch(`/valuechain/getTxByID?TxID=${encodeURIComponent(txId)}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const txInfo = await response.json();
+
+                let chaincodeInfoHtml = 'No chaincode info available.';
+                if (txInfo.ChainCodeInfos && txInfo.ChainCodeInfos.length > 0) {
+                    chaincodeInfoHtml = txInfo.ChainCodeInfos.map(cc => `
+                        <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                            <strong>Chaincode:</strong> ${escapeHtml(cc.ChainCodeName)}<br>
+                            <strong>Args:</strong>
+                            <ul style="margin-left: 20px; list-style: decimal;">
+                                ${cc.Args.map(arg => `<li><pre style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(arg)}</pre></li>`).join('')}
+                            </ul>
+                        </div>
+                    `).join('');
+                }
+
+                contentDiv.innerHTML = `
+                    <div class="tx-detail-grid">
+                        <span class="tx-detail-label">Transaction ID:</span>
+                        <span class="tx-detail-value">${escapeHtml(txInfo.TxId)}</span>
+
+                        <span class="tx-detail-label">Channel ID:</span>
+                        <span class="tx-detail-value">${escapeHtml(txInfo.ChannelId)}</span>
+
+                        <span class="tx-detail-label">Type:</span>
+                        <span class="tx-detail-value">${escapeHtml(txInfo.Type)}</span>
+
+                        <span class="tx-detail-label">Timestamp:</span>
+                        <span class="tx-detail-value">${new Date(txInfo.Timestamp).toLocaleString()}</span>
+
+                        <span class="tx-detail-label">Size:</span>
+                        <span class="tx-detail-value">${formatBytes(txInfo.Size)}</span>
+
+                        <span class="tx-detail-label">Validation Code:</span>
+                        <span class="tx-detail-value">${txInfo.ValidationCode}</span>
+                    </div>
+                    <h4 style="margin-top: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 5px;">Chaincode Invocation</h4>
+                    ${chaincodeInfoHtml}
+                `;
+
+            } catch (error) {
+                console.error('Failed to load transaction details:', error);
+                errorDiv.textContent = 'Failed to load transaction details.';
+                errorDiv.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
             }
         }
 
@@ -1548,42 +1827,35 @@
             }
         }
 
-        // 显示链上数据 - 修复JSON显示问题
+        // 显示链上数据
         function displayChainData(data) {
             const tableBody = document.getElementById('dataTableBody');
             tableBody.innerHTML = '';
 
             if (!data || data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 3rem;"><div class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></div></td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem;"><div class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></div></td></tr>';
                 return;
             }
 
             data.forEach((item, index) => {
                 const row = document.createElement('tr');
 
-                // 适配不同的字段命名方式
                 const key = item.Key || item.key || '';
                 let value = item.Value || item.value || '';
                 const isJson = item.IsJSON || item.isJson || false;
 
                 let valueDisplay = value;
                 let displayIsJson = isJson;
-                let parsedJson = null;
 
-                // 修复JSON显示问题
                 if (typeof value === 'object' && value !== null) {
-                    // 如果value已经是对象，直接格式化
                     valueDisplay = JSON.stringify(value, null, 2);
                     displayIsJson = true;
-                    parsedJson = value;
-                } else if (typeof value === 'string' && value.trim().startsWith('{')) {
-                    // 如果是JSON字符串，尝试解析
+                } else if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
                     try {
-                        parsedJson = JSON.parse(value);
+                        const parsedJson = JSON.parse(value);
                         valueDisplay = JSON.stringify(parsedJson, null, 2);
                         displayIsJson = true;
                     } catch (e) {
-                        // 如果不是有效的JSON，保持原样显示
                         valueDisplay = value;
                     }
                 }
@@ -1599,10 +1871,6 @@
                                         JSON
                                     </button>
                                     <span class="json-badge">JSON</span>
-                                    <div class="json-actions">
-                                        <button class="json-action-btn" onclick="copyJsonToClipboard(${index}, this)">复制</button>
-                                        <button class="json-action-btn" onclick="toggleJsonView(${index})">格式化</button>
-                                    </div>
                                 </div>
                                 <div class="json-content collapsed" id="json-content-${index}">${escapeHtml(valueDisplay)}</div>
                             </div>` :
@@ -1610,6 +1878,7 @@
                     }
                     </td>
                     <td>${displayIsJson ? 'JSON' : '字符串'}</td>
+                    <td><button class="action-button view-history-btn" data-key="${escapeHtml(key)}">View History</button></td>
                 `;
 
                 tableBody.appendChild(row);
@@ -1638,43 +1907,9 @@
             }
         }
 
-        // 切换JSON视图（格式化/压缩）
-        function toggleJsonView(index) {
-            const content = document.getElementById(`json-content-${index}`);
-            const currentText = content.textContent;
-
-            try {
-                const parsed = JSON.parse(currentText);
-                // 如果当前是格式化的，就压缩它
-                if (currentText.includes('\n')) {
-                    content.textContent = JSON.stringify(parsed);
-                } else {
-                    // 如果是压缩的，就格式化它
-                    content.textContent = JSON.stringify(parsed, null, 2);
-                }
-            } catch (e) {
-                console.error('JSON解析错误:', e);
-            }
-        }
-
-        // 复制JSON到剪贴板
-        function copyJsonToClipboard(index, button) {
-            const content = document.getElementById(`json-content-${index}`);
-            const text = content.textContent;
-
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = button.textContent;
-                button.textContent = '已复制';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                }, 2000);
-            }).catch(err => {
-                console.error('复制失败:', err);
-            });
-        }
-
         // HTML转义函数
         function escapeHtml(text) {
+            if (typeof text !== 'string') return text;
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
@@ -1682,7 +1917,7 @@
 
         // 文本截断函数
         function truncateText(text, maxLength) {
-            if (text.length <= maxLength) return text;
+            if (typeof text !== 'string' || text.length <= maxLength) return text;
             return text.substring(0, maxLength) + '...';
         }
 
@@ -1704,7 +1939,7 @@
             displayChainData(filteredData);
         }
 
-        // 创建CPU使用率图表 - 修改纵坐标设置
+        // 创建CPU使用率图表
         function createCPUChart(nodeName, dataToDisplay) {
             const canvasId = `cpu-chart-${nodeName}`;
             const canvas = document.getElementById(canvasId);
@@ -1712,7 +1947,6 @@
 
             const ctx = canvas.getContext('2d');
 
-            // 准备图表数据
             const labels = dataToDisplay.map(data =>
                 data.Timestamp ? new Date(data.Timestamp).toLocaleTimeString() : ''
             );
@@ -1720,25 +1954,10 @@
                 (data.CPUUsage || data.cpuUsage || 0).toFixed(2)
             );
 
-            // 计算动态纵坐标范围
-            const minValue = Math.min(...dataPoints);
-            const maxValue = Math.max(...dataPoints);
-
-            // 设置动态范围，最小刻度为2%
-            const rangePadding = 2; // 2%的边距
-            const suggestedMin = Math.max(0, Math.floor(minValue / 2) * 2 - rangePadding);
-            const suggestedMax = Math.min(100, Math.ceil(maxValue / 2) * 2 + rangePadding);
-
-            // 确保最小值和最大值之间有足够的间隔
-            const finalMin = suggestedMin >= 0 ? suggestedMin : 0;
-            const finalMax = suggestedMax <= 100 ? (suggestedMax - finalMin < 10 ? finalMin + 10 : suggestedMax) : 100;
-
-            // 如果已存在图表，先销毁
             if (cpuCharts[nodeName]) {
                 cpuCharts[nodeName].destroy();
             }
 
-            // 创建新图表
             cpuCharts[nodeName] = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1759,11 +1978,9 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: false,
-                            min: finalMin,
-                            max: finalMax,
+                            beginAtZero: true,
+                            max: 100,
                             ticks: {
-                                stepSize: 2, // 最小刻度为2%
                                 callback: function (value) {
                                     return value + '%';
                                 }
@@ -1785,7 +2002,7 @@
             });
         }
 
-        // 创建内存使用率图表 - 修改纵坐标设置
+        // 创建内存使用率图表
         function createMemoryChart(nodeName, dataToDisplay) {
             const canvasId = `memory-chart-${nodeName}`;
             const canvas = document.getElementById(canvasId);
@@ -1793,7 +2010,6 @@
 
             const ctx = canvas.getContext('2d');
 
-            // 准备图表数据
             const labels = dataToDisplay.map(data =>
                 data.Timestamp ? new Date(data.Timestamp).toLocaleTimeString() : ''
             );
@@ -1803,25 +2019,10 @@
                 return ((used / total) * 100).toFixed(2);
             });
 
-            // 计算动态纵坐标范围
-            const minValue = Math.min(...dataPoints);
-            const maxValue = Math.max(...dataPoints);
-
-            // 设置动态范围，最小刻度为2%
-            const rangePadding = 2; // 2%的边距
-            const suggestedMin = Math.max(0, Math.floor(minValue / 2) * 2 - rangePadding);
-            const suggestedMax = Math.min(100, Math.ceil(maxValue / 2) * 2 + rangePadding);
-
-            // 确保最小值和最大值之间有足够的间隔
-            const finalMin = suggestedMin >= 0 ? suggestedMin : 0;
-            const finalMax = suggestedMax <= 100 ? (suggestedMax - finalMin < 10 ? finalMin + 10 : suggestedMax) : 100;
-
-            // 如果已存在图表，先销毁
             if (memoryCharts[nodeName]) {
                 memoryCharts[nodeName].destroy();
             }
 
-            // 创建新图表
             memoryCharts[nodeName] = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1842,11 +2043,9 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: false,
-                            min: finalMin,
-                            max: finalMax,
+                            beginAtZero: true,
+                            max: 100,
                             ticks: {
-                                stepSize: 2, // 最小刻度为2%
                                 callback: function (value) {
                                     return value + '%';
                                 }
@@ -1875,7 +2074,6 @@
             document.getElementById('nodes-page').style.display = 'none';
             document.getElementById('data-page').style.display = 'none';
 
-            // 更新导航激活状态
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
@@ -1929,7 +2127,7 @@
 
         // 格式化字节大小
         function formatBytes(bytes) {
-            if (bytes === 0) return '0 Bytes';
+            if (!bytes || bytes === 0) return '0 Bytes';
             const k = 1024;
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));

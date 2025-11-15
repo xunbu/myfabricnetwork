@@ -27,6 +27,9 @@ const (
 )
 
 func main() {
+	channelName := "mychannel"
+	ChaincodeName := "basic"
+
 	clientConnection, err := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
 	if err != nil {
 		panic(err)
@@ -38,7 +41,7 @@ func main() {
 	}
 
 	defer gw.Close()
-	channelName := "mychannel"
+
 	chaincodeGateway, err := admin.GetChaincodeGateway(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		panic(err)
@@ -77,6 +80,7 @@ func main() {
 		c.Set("connection", clientConnection)
 		c.Set("gateway", gw)
 		c.Set("channelName", channelName)
+		c.Set("chaincodeName", ChaincodeName)
 		c.Set("chaincodeGateway", chaincodeGateway)
 		c.Set("chaincodePeer", chaincodePeer)
 		c.Set("discoveryPeer", discoveryPeer)
@@ -89,6 +93,8 @@ func main() {
 	r.GET("/valuechain/cpuHistory", getCpuHistory)
 	r.GET("/valuechain/memoryHistory", getMemoryHistory)
 	r.GET("/valuechain/getAllData", getAllData)
+	r.GET("/valuechain/getKeyHistory", getKeyHistory)
+	r.GET("/valuechain/getTxByID", getTxByID)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -220,6 +226,7 @@ func getMemoryHistory(c *gin.Context) {
 func getAllData(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
+	chaincodeName := c.MustGet("chaincodeName").(string)
 	// func GetAllData(gw *client.Gateway, channelName string) ([]chaincode.QueryRichResult, error) {
 	// 	v, err := EvaluateTransaction(gw, channelName, "basic", "QueryByRange", "", "")
 	// 	if err != nil {
@@ -237,10 +244,63 @@ func getAllData(c *gin.Context) {
 	// 	Value  interface{} `json:"value"`//Value有string和json([]byte)两种
 	// 	IsJSON bool        `json:"isJson"`
 	// }
-	v, err := gateway.GetAllData(gw, channelName, "basic")
+	v, err := gateway.GetAllData(gw, channelName, chaincodeName)
 	if err != nil {
 		return
 	}
 	c.JSON(http.StatusOK, v)
 
+}
+
+func getKeyHistory(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	chaincodeName := c.MustGet("chaincodeName").(string)
+	key := c.Query("key")
+	// 	type KeyHistory struct {
+	// 	TxId      string    `json:"txId"`
+	// 	Timestamp time.Time `json:"timestamp"`
+	// 	IsDelete  bool      `json:"isDelete"`
+	// 	Value     []byte    `json:"value"`//应该显示string(Value)，string后为string或json
+	// }
+	// func gateway.GetKeyHistory(gw *client.Gateway, channelName string, chaincodeName string, key string) (*[]chaincode.KeyHistory, error)
+	keyHistory, err := gateway.GetKeyHistory(gw, channelName, chaincodeName, key)
+	if err != nil {
+		return
+	}
+	c.JSON(http.StatusOK, keyHistory)
+}
+
+func getTxByID(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+	TxID := c.Query("TxID")
+	// 	type Txinfo struct {
+	// 	TxId      string
+	// 	ChannelId string
+	// 	Type      string
+	// 	Timestamp time.Time
+
+	// 	Size           int
+	// 	ValidationCode int
+	// 	ChainCodeInfos []*ChainCodeInfo
+	// }
+
+	// type ChainCodeInfo struct {
+	// 	ChainCodeName string
+	// 	Args          []string
+	// }
+
+	// func (txInfo *Txinfo) String() string {
+	// 	return fmt.Sprintf("TxId:%v\nChannelId:%v\nType:%v\nTimestamp:%v\nValidationCode:%v\nChainCodeInfos:\n%v\n", txInfo.TxId, txInfo.ChannelId, txInfo.Type, txInfo.Timestamp, txInfo.ValidationCode, txInfo.ChainCodeInfos)
+	// }
+
+	// func (chainCodeInfo *ChainCodeInfo) String() string {
+	// 	return fmt.Sprintf("ChainCodeName:%v,args:%v", chainCodeInfo.ChainCodeName, chainCodeInfo.Args)
+	// }
+	Txinfo, err := gateway.GetTxByID(gw, channelName, TxID)
+	if err != nil {
+		return
+	}
+	c.JSON(http.StatusOK, Txinfo)
 }

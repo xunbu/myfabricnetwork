@@ -463,7 +463,7 @@ func GetTxByID(gw *client.Gateway, channelName string, TxID string) (*Txinfo, er
 }
 
 func GetKeyHistory(gw *client.Gateway, channelName string, chaincodeName, key string) (*[]chaincode.KeyHistory, error) {
-	v, err := EvaluateTransaction(gw, channelName, "basic", "GetKeyHistory", "author")
+	v, err := EvaluateTransaction(gw, channelName, "basic", "GetKeyHistory", key)
 	if err != nil {
 		return nil, err
 	}
