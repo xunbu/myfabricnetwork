@@ -813,6 +813,8 @@
                 overflow-x: auto;
             }
 
+
+
             .detail-grid {
                 grid-template-columns: 1fr;
             }
@@ -978,7 +980,7 @@
                         </div>
                     </div>
                     <div class="detail-card">
-                        <div class="detail-title">Merkle根</div>
+                        <div class="detail-title">数据哈希 (Merkle根)</div>
                         <div class="detail-value">
                             <span class="hash-value" id="detail-dataHash">0x0000...</span>
                         </div>
@@ -1148,11 +1150,11 @@
         </footer>
     </div>
 
-    <!-- Key History Modal -->
+    <!-- 密钥历史记录模态框 -->
     <div id="key-history-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Key History</h2>
+                <h2>密钥历史记录</h2>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
@@ -1162,10 +1164,10 @@
                 <table class="data-table" style="margin-top: 1rem;">
                     <thead>
                         <tr>
-                            <th>Transaction ID</th>
-                            <th>Timestamp</th>
-                            <th>Value</th>
-                            <th>Is Delete</th>
+                            <th>交易ID</th>
+                            <th>时间戳</th>
+                            <th>值</th>
+                            <th>是否删除</th>
                         </tr>
                     </thead>
                     <tbody id="keyHistoryTableBody"></tbody>
@@ -1174,11 +1176,11 @@
         </div>
     </div>
 
-    <!-- Transaction Detail Modal -->
+    <!-- 交易详情模态框 -->
     <div id="tx-detail-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Transaction Details</h2>
+                <h2>交易详情</h2>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
@@ -1189,27 +1191,27 @@
         </div>
     </div>
 
-    <!-- Put Value Modal -->
+    <!-- 添加/更新数据模态框 -->
     <div id="put-value-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Add / Update Data</h2>
+                <h2>添加/更新数据</h2>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="put-value-form">
                     <div id="put-value-error" class="error-message" style="display: none;"></div>
                     <div class="form-group">
-                        <label for="put-key">Key</label>
+                        <label for="put-key">键 (Key)</label>
                         <input type="text" id="put-key" name="key" required>
                     </div>
                     <div class="form-group">
-                        <label for="put-value">Value</label>
+                        <label for="put-value">值 (Value)</label>
                         <textarea id="put-value" name="value" required></textarea>
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="refresh-button">
-                            <span class="submit-text">Submit</span>
+                            <span class="submit-text">提交</span>
                             <span class="loading" style="display: none;"></span>
                         </button>
                     </div>
@@ -1235,11 +1237,8 @@
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function () {
-            // 加载概览数据
-            loadOverviewData();
-
-            // 加载区块列表
-            loadBlocks(currentPage, pageSize);
+            // **FIX**: 确保顺序加载以避免刷新问题
+            initializeHomePage();
 
             // 绑定事件监听器
             bindEventListeners();
@@ -1248,6 +1247,13 @@
             setupAutoRefresh();
             setupHomeAutoRefresh();
         });
+
+        // **FIX**: 新的初始化函数，确保数据加载顺序
+        async function initializeHomePage() {
+            await loadOverviewData();
+            await loadBlocks(currentPage, pageSize);
+            updateRefreshStatus();
+        }
 
         // 绑定事件监听器
         function bindEventListeners() {
@@ -1285,7 +1291,7 @@
                 });
             });
 
-            // 手动刷新按钮
+            // 节点监控手动刷新按钮
             document.getElementById('manualRefresh').addEventListener('click', function () {
                 if (currentTab === 'cpu') {
                     loadCPUData();
@@ -1304,7 +1310,7 @@
                 loadChainData();
             });
 
-            // Add New Data button
+            // “添加新数据”按钮
             document.getElementById('addNewDataBtn').addEventListener('click', () => {
                 const modal = document.getElementById('put-value-modal');
                 modal.querySelector('form').reset();
@@ -1312,7 +1318,7 @@
                 modal.style.display = 'flex';
             });
 
-            // Add/Update form submission
+            // 添加/更新数据表单提交
             document.getElementById('put-value-form').addEventListener('submit', handlePutValueSubmit);
 
 
@@ -1360,28 +1366,28 @@
                 });
             });
 
-            // Modal Close Buttons
+            // 模态框关闭按钮
             document.querySelectorAll('.modal-close').forEach(button => {
                 button.addEventListener('click', () => {
                     button.closest('.modal-overlay').style.display = 'none';
                 });
             });
 
-            // Event Delegation for dynamic content
+            // 为动态内容使用事件委托
             document.body.addEventListener('click', function (e) {
-                // View History Button
+                // “查看历史”按钮
                 if (e.target.matches('.view-history-btn')) {
                     e.preventDefault();
                     const key = e.target.dataset.key;
                     showKeyHistory(key);
                 }
-                // Delete Key Button
+                // “删除”按钮
                 if (e.target.matches('.delete-key-btn')) {
                     e.preventDefault();
                     const key = e.target.dataset.key;
                     handleDeleteKey(key);
                 }
-                // Clickable TxID
+                // 可点击的交易ID
                 if (e.target.matches('.clickable-txid')) {
                     e.preventDefault();
                     const txId = e.target.dataset.txid;
@@ -1391,7 +1397,7 @@
         }
 
         // =========================================================
-        // == NEW FUNCTIONALITY: Put Value and Delete Key        ==
+        // == 数据操作功能: 添加/更新 和 删除                    ==
         // =========================================================
 
         async function handlePutValueSubmit(event) {
@@ -1404,7 +1410,7 @@
             const submitText = submitButton.querySelector('.submit-text');
             const loadingSpinner = submitButton.querySelector('.loading');
 
-            // Show loading state
+            // 显示加载状态
             submitText.style.display = 'none';
             loadingSpinner.style.display = 'inline-block';
             submitButton.disabled = true;
@@ -1414,19 +1420,19 @@
                 const response = await fetch(`/valuechain/putValue?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`);
 
                 if (!response.ok) {
-                    throw new Error(`Failed to save data. Server responded with status ${response.status}`);
+                    throw new Error(`保存数据失败。服务器状态码: ${response.status}`);
                 }
 
-                // Success
+                // 成功
                 document.getElementById('put-value-modal').style.display = 'none';
-                await loadChainData(); // Refresh the data table
+                await loadChainData(); // 刷新数据表格
 
             } catch (error) {
-                console.error('Error putting value:', error);
+                console.error('写入值时出错:', error);
                 errorDiv.textContent = error.message;
                 errorDiv.style.display = 'block';
             } finally {
-                // Hide loading state
+                // 隐藏加载状态
                 submitText.style.display = 'inline-block';
                 loadingSpinner.style.display = 'none';
                 submitButton.disabled = false;
@@ -1434,7 +1440,7 @@
         }
 
         async function handleDeleteKey(key) {
-            if (!confirm(`Are you sure you want to delete the key "${key}"? This action cannot be undone.`)) {
+            if (!confirm(`您确定要删除密钥 "${key}" 吗？此操作无法撤销。`)) {
                 return;
             }
 
@@ -1443,15 +1449,15 @@
                 const response = await fetch(`/valuechain/deleteKey?key=${encodeURIComponent(key)}`);
 
                 if (!response.ok) {
-                    throw new Error(`Failed to delete key. Server responded with status ${response.status}`);
+                    throw new Error(`删除密钥失败。服务器状态码: ${response.status}`);
                 }
 
-                // Success, refresh the data
+                // 成功, 刷新数据
                 await loadChainData();
 
             } catch (error) {
-                console.error('Error deleting key:', error);
-                alert(error.message); // Simple alert for error feedback
+                console.error('删除密钥时出错:', error);
+                alert(error.message); // 用简单的alert提示错误
             } finally {
                 hideLoading('data-page');
             }
@@ -1476,16 +1482,16 @@
         }
 
         // 刷新主页数据
-        function refreshHomeData() {
-            loadOverviewData();
-            loadBlocks(currentPage, pageSize);
+        async function refreshHomeData() {
+            await loadOverviewData();
+            await loadBlocks(currentPage, pageSize);
             updateRefreshStatus();
         }
 
         // 更新刷新状态
         function updateRefreshStatus() {
             const now = new Date();
-            const timeString = now.toLocaleTimeString();
+            const timeString = now.toLocaleTimeString('zh-CN');
             document.getElementById('refreshStatus').textContent = `最后更新: ${timeString}`;
         }
 
@@ -1547,16 +1553,19 @@
             });
 
             // 显示目标页面
-            if (page === 'home') {
-                document.getElementById('home-page').style.display = 'block';
-                document.querySelector('.nav-link[data-page="home"]').classList.add('active');
-            } else if (page === 'nodes') {
-                document.getElementById('nodes-page').style.display = 'block';
-                document.querySelector('.nav-link[data-page="nodes"]').classList.add('active');
+            const targetPage = document.getElementById(`${page}-page`);
+            const targetLink = document.querySelector(`.nav-link[data-page="${page}"]`);
+            if (targetPage) {
+                targetPage.style.display = 'block';
+            }
+            if (targetLink) {
+                targetLink.classList.add('active');
+            }
+
+            // 如果切换到特定页面，加载其初始数据
+            if (page === 'nodes') {
                 loadCPUData();
             } else if (page === 'data') {
-                document.getElementById('data-page').style.display = 'block';
-                document.querySelector('.nav-link[data-page="data"]').classList.add('active');
                 loadChainData();
             }
         }
@@ -1566,7 +1575,7 @@
             try {
                 showLoading('home-page');
                 const response = await fetch('/valuechain');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const data = await response.json();
 
                 document.getElementById('blockHeight').textContent = data.blockHeight || 0;
@@ -1576,10 +1585,10 @@
                 document.getElementById('nodeCount').textContent = data.nodeCount || 0;
 
                 blockHeight = data.blockHeight || 0;
-                hideLoading('home-page');
             } catch (error) {
                 console.error('加载概览数据失败:', error);
                 showError('home-page', '加载概览数据失败，请检查后端服务是否正常运行');
+            } finally {
                 hideLoading('home-page');
             }
         }
@@ -1589,16 +1598,14 @@
             try {
                 showLoading('home-page');
                 const response = await fetch(`/valuechain/getBlockByPage?pageNum=${pageNum}&pageSize=${pageSize}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
 
                 const blocks = await response.json();
-
                 const tableBody = document.getElementById('blocksTableBody');
                 tableBody.innerHTML = '';
 
                 if (!blocks || blocks.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">暂无区块数据</td></tr>';
-                    hideLoading('home-page');
+                    tableBody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无区块数据</td></tr>';
                     return;
                 }
 
@@ -1607,8 +1614,8 @@
                     row.className = 'block-row';
                     row.setAttribute('data-block-num', block.BlockNumber || block.blockNumber);
 
-                    const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString() :
-                        block.timestamp ? new Date(block.timestamp).toLocaleString() : '-';
+                    const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString('zh-CN') :
+                        block.timestamp ? new Date(block.timestamp).toLocaleString('zh-CN') : '-';
 
                     row.innerHTML = `
                         <td class="block-number">${block.BlockNumber || block.blockNumber || 0}</td>
@@ -1621,7 +1628,7 @@
                     `;
 
                     row.addEventListener('click', function () {
-                        showBlockDetail(block.BlockNumber || block.blockNumber);
+                        showBlockDetail(this.getAttribute('data-block-num'));
                     });
 
                     tableBody.appendChild(row);
@@ -1631,20 +1638,21 @@
                 document.getElementById('pageInfo').textContent = `第 ${pageNum + 1} 页`;
                 document.getElementById('prevPage').disabled = pageNum === 0;
                 document.getElementById('nextPage').disabled = (pageNum + 1) * pageSize >= blockHeight;
-                hideLoading('home-page');
             } catch (error) {
                 console.error('加载区块列表失败:', error);
                 showError('home-page', '加载区块列表失败');
+            } finally {
                 hideLoading('home-page');
             }
         }
+
 
         // 显示区块详情
         async function showBlockDetail(blockNum) {
             try {
                 showLoading('block-detail-page');
                 const response = await fetch(`/valuechain/getBlockByNum?blockNum=${blockNum}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const block = await response.json();
 
                 document.getElementById('detail-blockNumber').textContent = block.BlockNumber || block.blockNumber || 0;
@@ -1654,18 +1662,16 @@
                 document.getElementById('detail-txCount').textContent = block.TxCount || block.txCount || 0;
                 document.getElementById('detail-blockSize').textContent = formatBytes(block.BlockSize || block.blockSize || 0);
 
-                const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString() :
-                    block.timestamp ? new Date(block.timestamp).toLocaleString() : '-';
+                const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString('zh-CN') :
+                    block.timestamp ? new Date(block.timestamp).toLocaleString('zh-CN') : '-';
                 document.getElementById('detail-timestamp').textContent = timestamp;
-
                 document.getElementById('detail-channelId').textContent = block.ChannelID || block.channelId || '-';
 
                 // 填充交易列表
                 const transactionList = document.getElementById('transactionList');
                 transactionList.innerHTML = '';
-
                 const txIds = block.TxIDs || block.txIds || [];
-                if (txIds && txIds.length > 0) {
+                if (txIds.length > 0) {
                     txIds.forEach(txId => {
                         const li = document.createElement('li');
                         li.className = 'transaction-item';
@@ -1673,33 +1679,22 @@
                         transactionList.appendChild(li);
                     });
                 } else {
-                    const li = document.createElement('li');
-                    li.className = 'transaction-item';
-                    li.textContent = '此区块没有交易';
-                    transactionList.appendChild(li);
+                    transactionList.innerHTML = '<li class="transaction-item">此区块没有交易</li>';
                 }
 
                 showBlockDetailPage();
-                hideLoading('block-detail-page');
             } catch (error) {
                 console.error('加载区块详情失败:', error);
                 showError('block-detail-page', '加载区块详情失败');
+            } finally {
                 hideLoading('block-detail-page');
             }
         }
 
         // =========================================================
-        // == NEW & CORRECTED FUNCTIONALITY: Key History & TX Details ==
+        // == 密钥历史与交易详情功能 (已中文化)                ==
         // =========================================================
 
-        /**
-         * CORRECTED: Show Key History Modal
-         * Fixes:
-         * 1. Uses correct camelCase field names (e.g., item.txId) from the JSON response.
-         * 2. Handles base64 decoding of the `value` field.
-         * 3. Robustly checks if the decoded value is JSON for pretty-printing.
-         * 4. [NEW FIX] Correctly decodes UTF-8 characters (like Chinese) from the Base64 value.
-         */
         async function showKeyHistory(key) {
             const modal = document.getElementById('key-history-modal');
             const loading = document.getElementById('history-loading');
@@ -1711,22 +1706,20 @@
             loading.style.display = 'block';
             errorDiv.style.display = 'none';
             tableBody.innerHTML = '';
-            keyName.textContent = `History for key: "${key}"`;
+            keyName.textContent = `密钥 "${key}" 的历史记录`;
 
             try {
                 const response = await fetch(`/valuechain/getKeyHistory?key=${encodeURIComponent(key)}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const history = await response.json();
 
                 if (!history || history.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">No history found for this key.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="4" class="empty-state">未找到此密钥的历史记录。</td></tr>';
                     return;
                 }
 
                 history.forEach(item => {
                     const row = document.createElement('tr');
-
-                    // Correctly access camelCase fields from the Go backend
                     const txId = item.txId;
                     const timestamp = item.timestamp;
                     const isDelete = item.isDelete;
@@ -1734,53 +1727,46 @@
                     let valueDisplay = '';
 
                     if (isDelete) {
-                        valueDisplay = '<i>DELETED</i>';
+                        valueDisplay = '<i>已删除</i>';
                     } else {
                         try {
-                            // ******* THE FIX IS HERE *******
-                            // Decode Base64 to a binary string
                             const binaryString = atob(base64Value);
-                            // Create a byte array (Uint8Array) from the binary string
                             const bytes = new Uint8Array(binaryString.length);
                             for (let i = 0; i < binaryString.length; i++) {
                                 bytes[i] = binaryString.charCodeAt(i);
                             }
-                            // Use TextDecoder to decode the byte array as UTF-8
                             const decodedValue = new TextDecoder('utf-8').decode(bytes);
-                            // ********************************
 
-                            // Now that we have a correct string, try to parse it as JSON
                             try {
                                 const parsedJson = JSON.parse(decodedValue);
                                 valueDisplay = `<pre class="json-value">${JSON.stringify(parsedJson, null, 2)}</pre>`;
                             } catch (jsonError) {
-                                // If not JSON, display as a plain string
                                 valueDisplay = escapeHtml(decodedValue);
                             }
                         } catch (decodeError) {
-                            console.error('Base64/UTF-8 decoding error:', decodeError);
-                            valueDisplay = '<i style="color:red;">[Invalid Data]</i>';
+                            console.error('Base64/UTF-8解码错误:', decodeError);
+                            valueDisplay = '<i style="color:red;">[无效数据]</i>';
                         }
                     }
 
                     row.innerHTML = `
                         <td><span class="clickable-txid" data-txid="${txId}">${txId.substring(0, 15)}...</span></td>
-                        <td>${new Date(timestamp).toLocaleString()}</td>
+                        <td>${new Date(timestamp).toLocaleString('zh-CN')}</td>
                         <td>${valueDisplay}</td>
-                        <td>${isDelete ? 'Yes' : 'No'}</td>
+                        <td>${isDelete ? '是' : '否'}</td>
                     `;
                     tableBody.appendChild(row);
                 });
 
             } catch (error) {
-                console.error('Failed to load key history:', error);
-                errorDiv.textContent = 'Failed to load key history.';
+                console.error('加载密钥历史记录失败:', error);
+                errorDiv.textContent = '加载密钥历史记录失败。';
                 errorDiv.style.display = 'block';
             } finally {
                 loading.style.display = 'none';
             }
         }
-        // Show Transaction Detail Modal
+
         async function showTxDetail(txId) {
             const modal = document.getElementById('tx-detail-modal');
             const loading = document.getElementById('tx-loading');
@@ -1794,15 +1780,15 @@
 
             try {
                 const response = await fetch(`/valuechain/getTxByID?TxID=${encodeURIComponent(txId)}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const txInfo = await response.json();
 
-                let chaincodeInfoHtml = 'No chaincode info available.';
+                let chaincodeInfoHtml = '无链码调用信息。';
                 if (txInfo.ChainCodeInfos && txInfo.ChainCodeInfos.length > 0) {
                     chaincodeInfoHtml = txInfo.ChainCodeInfos.map(cc => `
                         <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                            <strong>Chaincode:</strong> ${escapeHtml(cc.ChainCodeName)}<br>
-                            <strong>Args:</strong>
+                            <strong>链码:</strong> ${escapeHtml(cc.ChainCodeName)}<br>
+                            <strong>参数:</strong>
                             <ul style="margin-left: 20px; list-style: decimal;">
                                 ${cc.Args.map(arg => `<li><pre style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(arg)}</pre></li>`).join('')}
                             </ul>
@@ -1812,31 +1798,31 @@
 
                 contentDiv.innerHTML = `
                     <div class="tx-detail-grid">
-                        <span class="tx-detail-label">Transaction ID:</span>
+                        <span class="tx-detail-label">交易ID:</span>
                         <span class="tx-detail-value">${escapeHtml(txInfo.TxId)}</span>
 
-                        <span class="tx-detail-label">Channel ID:</span>
+                        <span class="tx-detail-label">通道ID:</span>
                         <span class="tx-detail-value">${escapeHtml(txInfo.ChannelId)}</span>
 
-                        <span class="tx-detail-label">Type:</span>
+                        <span class="tx-detail-label">类型:</span>
                         <span class="tx-detail-value">${escapeHtml(txInfo.Type)}</span>
 
-                        <span class="tx-detail-label">Timestamp:</span>
-                        <span class="tx-detail-value">${new Date(txInfo.Timestamp).toLocaleString()}</span>
+                        <span class="tx-detail-label">时间戳:</span>
+                        <span class="tx-detail-value">${new Date(txInfo.Timestamp).toLocaleString('zh-CN')}</span>
 
-                        <span class="tx-detail-label">Size:</span>
+                        <span class="tx-detail-label">大小:</span>
                         <span class="tx-detail-value">${formatBytes(txInfo.Size)}</span>
 
-                        <span class="tx-detail-label">Validation Code:</span>
+                        <span class="tx-detail-label">验证码:</span>
                         <span class="tx-detail-value">${txInfo.ValidationCode}</span>
                     </div>
-                    <h4 style="margin-top: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 5px;">Chaincode Invocation</h4>
+                    <h4 style="margin-top: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 5px;">链码调用</h4>
                     ${chaincodeInfoHtml}
                 `;
 
             } catch (error) {
-                console.error('Failed to load transaction details:', error);
-                errorDiv.textContent = 'Failed to load transaction details.';
+                console.error('加载交易详情失败:', error);
+                errorDiv.textContent = '加载交易详情失败。';
                 errorDiv.style.display = 'block';
             } finally {
                 loading.style.display = 'none';
@@ -1848,46 +1834,31 @@
             try {
                 showLoading('nodes-page');
                 const response = await fetch('/valuechain/cpuHistory');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const cpuData = await response.json();
-
                 const nodeCards = document.getElementById('cpuNodeCards');
                 nodeCards.innerHTML = '';
 
                 if (!cpuData || Object.keys(cpuData).length === 0) {
                     nodeCards.innerHTML = '<div class="empty-state"><div class="icon">📊</div><p>暂无CPU监控数据</p></div>';
-                    hideLoading('nodes-page');
                     return;
                 }
 
                 const now = Date.now();
                 const startTime = now - (currentTimeRange * 60 * 1000);
 
-                // 处理每个节点的数据
                 Object.keys(cpuData).forEach(nodeName => {
                     const nodeData = cpuData[nodeName];
                     if (!nodeData || nodeData.length === 0) return;
 
-                    // 过滤数据以匹配所选时间范围
-                    const filteredData = nodeData.filter(d => {
-                        const timestamp = d.Timestamp ? new Date(d.Timestamp).getTime() : 0;
-                        return timestamp >= startTime;
-                    });
-
-                    // 获取最新的CPU使用率
+                    const filteredData = nodeData.filter(d => (d.Timestamp ? new Date(d.Timestamp).getTime() : 0) >= startTime);
                     const latestData = nodeData[nodeData.length - 1];
                     const cpuUsage = (latestData.CPUUsage || latestData.cpuUsage || 0).toFixed(2);
-
-                    // 根据CPU使用率设置颜色
                     let cpuClass = 'cpu-low';
                     if (cpuUsage > 50) cpuClass = 'cpu-medium';
                     if (cpuUsage > 80) cpuClass = 'cpu-high';
+                    const latestTimestamp = latestData.Timestamp ? new Date(latestData.Timestamp).toLocaleString('zh-CN') : '-';
 
-                    const latestTimestamp = latestData.Timestamp ?
-                        new Date(latestData.Timestamp).toLocaleString() :
-                        new Date().toLocaleString();
-
-                    // 创建节点卡片
                     const nodeCard = document.createElement('div');
                     nodeCard.className = 'node-card';
                     nodeCard.innerHTML = `
@@ -1898,16 +1869,13 @@
                             <canvas id="cpu-chart-${nodeName}"></canvas>
                         </div>
                     `;
-
                     nodeCards.appendChild(nodeCard);
-
-                    // 使用过滤后的数据创建图表
                     createCPUChart(nodeName, filteredData);
                 });
-                hideLoading('nodes-page');
             } catch (error) {
                 console.error('加载CPU数据失败:', error);
                 document.getElementById('cpuNodeCards').innerHTML = '<div class="error-message">无法加载CPU数据，请确保监控服务正在运行。</div>';
+            } finally {
                 hideLoading('nodes-page');
             }
         }
@@ -1917,48 +1885,33 @@
             try {
                 showLoading('nodes-page');
                 const response = await fetch('/valuechain/memoryHistory');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const memoryData = await response.json();
-
                 const nodeCards = document.getElementById('memoryNodeCards');
                 nodeCards.innerHTML = '';
 
                 if (!memoryData || Object.keys(memoryData).length === 0) {
                     nodeCards.innerHTML = '<div class="empty-state"><div class="icon">💾</div><p>暂无内存监控数据</p></div>';
-                    hideLoading('nodes-page');
                     return;
                 }
 
                 const now = Date.now();
                 const startTime = now - (currentTimeRange * 60 * 1000);
 
-                // 处理每个节点的数据
                 Object.keys(memoryData).forEach(nodeName => {
                     const nodeData = memoryData[nodeName];
                     if (!nodeData || nodeData.length === 0) return;
 
-                    // 过滤数据以匹配所选时间范围
-                    const filteredData = nodeData.filter(d => {
-                        const timestamp = d.Timestamp ? new Date(d.Timestamp).getTime() : 0;
-                        return timestamp >= startTime;
-                    });
-
-                    // 获取最新的内存使用率
+                    const filteredData = nodeData.filter(d => (d.Timestamp ? new Date(d.Timestamp).getTime() : 0) >= startTime);
                     const latestData = nodeData[nodeData.length - 1];
                     const usedMemory = latestData.UsedMemory || latestData.usedMemory || 0;
                     const totalMemory = latestData.TotalMemory || latestData.totalMemory || 1;
                     const memoryUsagePercent = ((usedMemory / totalMemory) * 100).toFixed(2);
-
-                    // 根据内存使用率设置颜色
                     let memoryClass = 'memory-low';
                     if (memoryUsagePercent > 70) memoryClass = 'memory-medium';
                     if (memoryUsagePercent > 90) memoryClass = 'memory-high';
+                    const latestTimestamp = latestData.Timestamp ? new Date(latestData.Timestamp).toLocaleString('zh-CN') : '-';
 
-                    const latestTimestamp = latestData.Timestamp ?
-                        new Date(latestData.Timestamp).toLocaleString() :
-                        new Date().toLocaleString();
-
-                    // 创建节点卡片
                     const nodeCard = document.createElement('div');
                     nodeCard.className = 'node-card';
                     nodeCard.innerHTML = `
@@ -1970,16 +1923,13 @@
                             <canvas id="memory-chart-${nodeName}"></canvas>
                         </div>
                     `;
-
                     nodeCards.appendChild(nodeCard);
-
-                    // 使用过滤后的数据创建图表
                     createMemoryChart(nodeName, filteredData);
                 });
-                hideLoading('nodes-page');
             } catch (error) {
                 console.error('加载内存数据失败:', error);
                 document.getElementById('memoryNodeCards').innerHTML = '<div class="error-message">无法加载内存数据，请确保监控服务正在运行。</div>';
+            } finally {
                 hideLoading('nodes-page');
             }
         }
@@ -1989,15 +1939,14 @@
             try {
                 showLoading('data-page');
                 const response = await fetch('/valuechain/getAllData');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const data = await response.json();
-
                 allChainData = data || [];
                 displayChainData(allChainData);
-                hideLoading('data-page');
             } catch (error) {
                 console.error('加载链上数据失败:', error);
                 showError('data-page', '加载链上数据失败');
+            } finally {
                 hideLoading('data-page');
             }
         }
@@ -2008,65 +1957,53 @@
             tableBody.innerHTML = '';
 
             if (!data || data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem;"><div class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></div></td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></td></tr>';
                 return;
             }
 
             data.forEach((item, index) => {
                 const row = document.createElement('tr');
-
                 const key = item.Key || item.key || '';
                 let value = item.Value || item.value || '';
-                const isJson = item.IsJSON || item.isJson || false;
+                let displayIsJson = item.IsJSON || item.isJson || false;
 
                 let valueDisplay = value;
-                let displayIsJson = isJson;
-
                 if (typeof value === 'object' && value !== null) {
                     valueDisplay = JSON.stringify(value, null, 2);
                     displayIsJson = true;
                 } else if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
                     try {
-                        const parsedJson = JSON.parse(value);
-                        valueDisplay = JSON.stringify(parsedJson, null, 2);
+                        valueDisplay = JSON.stringify(JSON.parse(value), null, 2);
                         displayIsJson = true;
-                    } catch (e) {
-                        valueDisplay = value;
-                    }
+                    } catch (e) { /* 不是合法的JSON，按原样显示 */ }
                 }
 
                 row.innerHTML = `
-                    <td class="data-key" title="${key}">${key}</td>
+                    <td class="data-key" title="${escapeHtml(key)}">${escapeHtml(key)}</td>
                     <td class="data-value">
                         ${displayIsJson ?
                         `<div class="json-container">
-                                <div class="json-controls">
-                                    <button class="json-toggle" data-index="${index}">
-                                        <span class="json-expand-icon"></span>
-                                        JSON
-                                    </button>
-                                    <span class="json-badge">JSON</span>
-                                </div>
-                                <div class="json-content collapsed" id="json-content-${index}">${escapeHtml(valueDisplay)}</div>
-                            </div>` :
+                            <div class="json-controls">
+                                <button class="json-toggle" data-index="${index}"><span class="json-expand-icon"></span>JSON</button>
+                                <span class="json-badge">JSON</span>
+                            </div>
+                            <div class="json-content collapsed" id="json-content-${index}">${escapeHtml(valueDisplay)}</div>
+                        </div>` :
                         `<span title="${escapeHtml(valueDisplay)}">${escapeHtml(truncateText(valueDisplay, 100))}</span>`
                     }
                     </td>
                     <td>${displayIsJson ? 'JSON' : '字符串'}</td>
                     <td>
-                        <button class="action-button view-history-btn" data-key="${escapeHtml(key)}">History</button>
-                        <button class="action-button delete delete-key-btn" data-key="${escapeHtml(key)}">Delete</button>
+                        <button class="action-button view-history-btn" data-key="${escapeHtml(key)}">历史记录</button>
+                        <button class="action-button delete delete-key-btn" data-key="${escapeHtml(key)}">删除</button>
                     </td>
                 `;
-
                 tableBody.appendChild(row);
             });
 
-            // 为JSON展开/收缩按钮添加事件监听器
             document.querySelectorAll('.json-toggle').forEach(button => {
                 button.addEventListener('click', function () {
-                    const index = this.getAttribute('data-index');
-                    toggleJsonDisplay(index);
+                    toggleJsonDisplay(this.getAttribute('data-index'));
                 });
             });
         }
@@ -2075,14 +2012,8 @@
         function toggleJsonDisplay(index) {
             const content = document.getElementById(`json-content-${index}`);
             const icon = document.querySelector(`.json-toggle[data-index="${index}"] .json-expand-icon`);
-
-            if (content.classList.contains('collapsed')) {
-                content.classList.remove('collapsed');
-                icon.classList.add('expanded');
-            } else {
-                content.classList.add('collapsed');
-                icon.classList.remove('expanded');
-            }
+            content.classList.toggle('collapsed');
+            icon.classList.toggle('expanded');
         }
 
         // HTML转义函数
@@ -2102,18 +2033,15 @@
         // 过滤链上数据
         function filterChainData() {
             const searchTerm = document.getElementById('dataSearch').value.toLowerCase();
-
             if (!searchTerm) {
                 displayChainData(allChainData);
                 return;
             }
-
             const filteredData = allChainData.filter(item => {
                 const key = (item.Key || item.key || '').toLowerCase();
                 const value = String(item.Value || item.value || '').toLowerCase();
                 return key.includes(searchTerm) || value.includes(searchTerm);
             });
-
             displayChainData(filteredData);
         }
 
@@ -2122,15 +2050,10 @@
             const canvasId = `cpu-chart-${nodeName}`;
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
-
             const ctx = canvas.getContext('2d');
 
-            const labels = dataToDisplay.map(data =>
-                data.Timestamp ? new Date(data.Timestamp).toLocaleTimeString() : ''
-            );
-            const dataPoints = dataToDisplay.map(data =>
-                (data.CPUUsage || data.cpuUsage || 0).toFixed(2)
-            );
+            const labels = dataToDisplay.map(data => new Date(data.Timestamp || 0).toLocaleTimeString('zh-CN'));
+            const dataPoints = dataToDisplay.map(data => (data.CPUUsage || data.cpuUsage || 0).toFixed(2));
 
             if (cpuCharts[nodeName]) {
                 cpuCharts[nodeName].destroy();
@@ -2155,27 +2078,10 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                callback: function (value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        }
+                        y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } },
+                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
                     },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
+                    plugins: { legend: { display: false } }
                 }
             });
         }
@@ -2185,12 +2091,9 @@
             const canvasId = `memory-chart-${nodeName}`;
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
-
             const ctx = canvas.getContext('2d');
 
-            const labels = dataToDisplay.map(data =>
-                data.Timestamp ? new Date(data.Timestamp).toLocaleTimeString() : ''
-            );
+            const labels = dataToDisplay.map(data => new Date(data.Timestamp || 0).toLocaleTimeString('zh-CN'));
             const dataPoints = dataToDisplay.map(data => {
                 const used = data.UsedMemory || data.usedMemory || 0;
                 const total = data.TotalMemory || data.totalMemory || 1;
@@ -2220,42 +2123,17 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                callback: function (value) {
-                                    return value + '%';
-                                }
-                            }
-                        },
-                        x: {
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        }
+                        y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } },
+                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
                     },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
+                    plugins: { legend: { display: false } }
                 }
             });
         }
 
         // 显示主页
         function showHomePage() {
-            document.getElementById('home-page').style.display = 'block';
-            document.getElementById('block-detail-page').style.display = 'none';
-            document.getElementById('nodes-page').style.display = 'none';
-            document.getElementById('data-page').style.display = 'none';
-
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            document.querySelector('.nav-link[data-page="home"]').classList.add('active');
+            showPage('home');
         }
 
         // 显示区块详情页面
@@ -2268,22 +2146,23 @@
 
         // 显示加载状态
         function showLoading(pageId) {
-            let overlay = document.querySelector(`#${pageId} .loading-overlay`);
+            const pageElement = document.getElementById(pageId);
+            if (!pageElement) return;
+            let overlay = pageElement.querySelector('.loading-overlay');
             if (!overlay) {
                 overlay = document.createElement('div');
                 overlay.className = 'loading-overlay';
                 overlay.innerHTML = '<div class="loading"></div>';
-                const pageElement = document.getElementById(pageId);
-                if (pageElement) {
-                    pageElement.style.position = 'relative';
-                    pageElement.appendChild(overlay);
-                }
+                pageElement.style.position = 'relative';
+                pageElement.appendChild(overlay);
             }
         }
 
         // 隐藏加载状态
         function hideLoading(pageId) {
-            const overlay = document.querySelector(`#${pageId} .loading-overlay`);
+            const pageElement = document.getElementById(pageId);
+            if (!pageElement) return;
+            const overlay = pageElement.querySelector('.loading-overlay');
             if (overlay) {
                 overlay.remove();
             }
@@ -2294,11 +2173,10 @@
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
-
-            const container = document.getElementById(pageId).querySelector('.container') ||
-                document.getElementById(pageId).querySelector('main') ||
-                document.getElementById(pageId);
+            const container = document.getElementById(pageId)?.querySelector('.container, main');
             if (container) {
+                // 移除旧的错误提示
+                container.querySelector('.error-message')?.remove();
                 container.insertBefore(errorDiv, container.firstChild);
             }
         }
