@@ -372,6 +372,9 @@ func GetAllData(gw *client.Gateway, channelName string, chaincodeName string) ([
 	if err != nil {
 		return nil, err
 	}
+	if len(v) == 0 {
+		return []chaincode.QueryRichResult{}, nil
+	}
 	var results []chaincode.QueryRichResult
 	err = json.Unmarshal(v, &results)
 	if err != nil {

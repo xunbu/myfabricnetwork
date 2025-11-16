@@ -96,6 +96,7 @@ func main() {
 	r.GET("/valuechain/getKeyHistory", getKeyHistory)
 	r.GET("/valuechain/getTxByID", getTxByID)
 	r.GET("/valuechain/putValue", PutValue)
+	r.GET("/valuechain/deleteKey", DeleteKey)
 	// 默认端口 8080 启动服务器
 	// 监听 0.0.0.0:8080（Windows 下为 localhost:8080）
 	r.Run()
@@ -247,6 +248,7 @@ func getAllData(c *gin.Context) {
 	// }
 	v, err := gateway.GetAllData(gw, channelName, chaincodeName)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
 	c.JSON(http.StatusOK, v)
