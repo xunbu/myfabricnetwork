@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/asn1"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -12,6 +14,37 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"google.golang.org/protobuf/proto"
 )
+
+// asn1Header 是一个临时的结构体，用于以 ASN.1 格式序列化区块头。
+// 字段的顺序至关重要，必须是 Number, PreviousHash, DataHash。
+type asn1Header struct {
+	Number       int64
+	PreviousHash []byte
+	DataHash     []byte
+}
+
+// CalculateBlockHash 是一个与 Fabric 兼容的区块哈希计算函数。
+// 它复现了 `protoutil.BlockHeaderHash()` 的功能。
+func CalculateBlockHash(header *common.BlockHeader) ([]byte, error) {
+	// 1. 将区块头的核心字段填充到 ASN.1 结构体中
+	asn1Header := asn1Header{
+		Number:       int64(header.Number),
+		PreviousHash: header.PreviousHash,
+		DataHash:     header.DataHash,
+	}
+
+	// 2. 使用 ASN.1 DER 编码规则进行序列化
+	result, err := asn1.Marshal(asn1Header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal block header for hashing: %w", err)
+	}
+
+	// 3. 对序列化后的字节流进行 SHA256 哈希计算
+	hash := sha256.Sum256(result)
+
+	// 返回哈希值的切片
+	return hash[:], nil
+}
 
 func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, includeTxDetails bool) (*BlockInfo, error) {
 	var block common.Block
@@ -35,8 +68,12 @@ func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, i
 		timestamp = time.Now().AddDate(-1, 0, 0) // 设置为一年前
 	}
 
+	h, err := CalculateBlockHash(blockHeader)
+	if err != nil {
+		return nil, err
+	}
 	return &BlockInfo{
-		BlockHash:    fmt.Sprintf("%x", blockHeader.DataHash),
+		BlockHash:    fmt.Sprintf("%x", h),
 		PreviousHash: fmt.Sprintf("%x", blockHeader.PreviousHash),
 		MerkleRoot:   fmt.Sprintf("%x", blockHeader.DataHash),
 		BlockNumber:  blockNumber,
