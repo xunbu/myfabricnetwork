@@ -1130,7 +1130,6 @@
                                 <tr>
                                     <th>键</th>
                                     <th>值</th>
-                                    <th>类型</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
@@ -1195,7 +1194,7 @@
     <div id="put-value-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>添加/更新数据</h2>
+                <h2 id="put-value-modal-title">添加新数据</h2>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
@@ -1237,35 +1236,28 @@
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function () {
-            // **FIX**: 确保顺序加载以避免刷新问题
             initializeHomePage();
-
-            // 绑定事件监听器
             bindEventListeners();
-
-            // 初始化自动刷新
             setupAutoRefresh();
             setupHomeAutoRefresh();
         });
 
-        // **FIX**: 新的初始化函数，确保数据加载顺序
         async function initializeHomePage() {
             await loadOverviewData();
             await loadBlocks(currentPage, pageSize);
             updateRefreshStatus();
         }
 
-        // 绑定事件监听器
         function bindEventListeners() {
             // 分页按钮
-            document.getElementById('prevPage').addEventListener('click', function () {
+            document.getElementById('prevPage').addEventListener('click', () => {
                 if (currentPage > 0) {
                     currentPage--;
                     loadBlocks(currentPage, pageSize);
                 }
             });
 
-            document.getElementById('nextPage').addEventListener('click', function () {
+            document.getElementById('nextPage').addEventListener('click', () => {
                 if ((currentPage + 1) * pageSize < blockHeight) {
                     currentPage++;
                     loadBlocks(currentPage, pageSize);
@@ -1273,131 +1265,99 @@
             });
 
             // 返回按钮
-            document.getElementById('back-button').addEventListener('click', function () {
-                showHomePage();
-            });
-
-            document.getElementById('back-to-home').addEventListener('click', function (e) {
+            document.getElementById('back-button').addEventListener('click', showHomePage);
+            document.getElementById('back-to-home').addEventListener('click', (e) => {
                 e.preventDefault();
                 showHomePage();
             });
 
-            // 导航链接事件
+            // 导航链接
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.addEventListener('click', function (e) {
                     e.preventDefault();
-                    const page = this.getAttribute('data-page');
-                    showPage(page);
+                    showPage(this.getAttribute('data-page'));
                 });
             });
 
-            // 节点监控手动刷新按钮
-            document.getElementById('manualRefresh').addEventListener('click', function () {
-                if (currentTab === 'cpu') {
-                    loadCPUData();
-                } else {
-                    loadMemoryData();
-                }
+            // 手动刷新按钮
+            document.getElementById('manualRefresh').addEventListener('click', () => {
+                if (currentTab === 'cpu') loadCPUData();
+                else loadMemoryData();
             });
+            document.getElementById('manualRefreshHome').addEventListener('click', refreshHomeData);
+            document.getElementById('refreshData').addEventListener('click', loadChainData);
 
-            // 主页手动刷新按钮
-            document.getElementById('manualRefreshHome').addEventListener('click', function () {
-                refreshHomeData();
-            });
-
-            // 数据页面刷新按钮
-            document.getElementById('refreshData').addEventListener('click', function () {
-                loadChainData();
-            });
-
-            // “添加新数据”按钮
+            // 添加新数据按钮
             document.getElementById('addNewDataBtn').addEventListener('click', () => {
                 const modal = document.getElementById('put-value-modal');
-                modal.querySelector('form').reset();
-                modal.querySelector('#put-value-error').style.display = 'none';
+                const form = modal.querySelector('form');
+                form.reset();
+                form.querySelector('#put-value-error').style.display = 'none';
+                modal.querySelector('#put-value-modal-title').textContent = '添加新数据';
+                modal.querySelector('#put-key').disabled = false;
                 modal.style.display = 'flex';
             });
 
-            // 添加/更新数据表单提交
+            // 表单提交
             document.getElementById('put-value-form').addEventListener('submit', handlePutValueSubmit);
 
-
             // 数据搜索
-            document.getElementById('searchData').addEventListener('click', function () {
-                filterChainData();
+            document.getElementById('searchData').addEventListener('click', filterChainData);
+            document.getElementById('dataSearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') filterChainData();
             });
 
-            document.getElementById('dataSearch').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') {
-                    filterChainData();
-                }
-            });
+            // 自动刷新开关
+            document.getElementById('autoRefreshToggle').addEventListener('change', setupHomeAutoRefresh);
 
-            // 主页自动刷新开关
-            document.getElementById('autoRefreshToggle').addEventListener('change', function () {
-                setupHomeAutoRefresh();
-            });
-
-            // 自动刷新设置
+            // 节点监控设置
             document.querySelectorAll('input[name="refresh"]').forEach(radio => {
                 radio.addEventListener('change', function () {
                     currentRefreshRate = parseInt(this.value);
                     setupAutoRefresh();
                 });
             });
-
-            // 时间范围选择
             document.querySelectorAll('input[name="timeRange"]').forEach(radio => {
                 radio.addEventListener('change', function () {
                     currentTimeRange = parseInt(this.value);
-                    if (currentTab === 'cpu') {
-                        loadCPUData();
-                    } else {
-                        loadMemoryData();
-                    }
+                    if (currentTab === 'cpu') loadCPUData();
+                    else loadMemoryData();
                 });
             });
 
             // 标签页切换
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', function () {
-                    const tabId = this.getAttribute('data-tab');
-                    switchTab(tabId);
+                    switchTab(this.getAttribute('data-tab'));
                 });
             });
 
-            // 模态框关闭按钮
+            // 模态框关闭
             document.querySelectorAll('.modal-close').forEach(button => {
                 button.addEventListener('click', () => {
                     button.closest('.modal-overlay').style.display = 'none';
                 });
             });
 
-            // 为动态内容使用事件委托
+            // 事件委托处理动态内容点击
             document.body.addEventListener('click', function (e) {
-                // “查看历史”按钮
                 if (e.target.matches('.view-history-btn')) {
                     e.preventDefault();
-                    const key = e.target.dataset.key;
-                    showKeyHistory(key);
+                    showKeyHistory(e.target.dataset.key);
                 }
-                // “删除”按钮
                 if (e.target.matches('.delete-key-btn')) {
                     e.preventDefault();
-                    const key = e.target.dataset.key;
-                    handleDeleteKey(key);
+                    handleDeleteKey(e.target.dataset.key);
                 }
-                // 可点击的交易ID
                 if (e.target.matches('.clickable-txid')) {
                     e.preventDefault();
-                    const txId = e.target.dataset.txid;
-                    showTxDetail(txId);
+                    showTxDetail(e.target.dataset.txid);
                 }
             });
         }
 
         // =========================================================
-        // == 数据操作功能: 添加/更新 和 删除                    ==
+        // == API 调用与数据处理
         // =========================================================
 
         async function handlePutValueSubmit(event) {
@@ -1410,29 +1370,31 @@
             const submitText = submitButton.querySelector('.submit-text');
             const loadingSpinner = submitButton.querySelector('.loading');
 
-            // 显示加载状态
             submitText.style.display = 'none';
             loadingSpinner.style.display = 'inline-block';
             submitButton.disabled = true;
             errorDiv.style.display = 'none';
 
             try {
-                const response = await fetch(`/valuechain/putValue?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`);
+                // **MODIFIED**: Use POST with JSON body
+                const response = await fetch(`/valuechain/data`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, value })
+                });
 
                 if (!response.ok) {
-                    throw new Error(`保存数据失败。服务器状态码: ${response.status}`);
+                    const errData = await response.json();
+                    throw new Error(errData.error || `保存数据失败，状态码: ${response.status}`);
                 }
 
-                // 成功
                 document.getElementById('put-value-modal').style.display = 'none';
-                await loadChainData(); // 刷新数据表格
-
+                await loadChainData();
             } catch (error) {
                 console.error('写入值时出错:', error);
                 errorDiv.textContent = error.message;
                 errorDiv.style.display = 'block';
             } finally {
-                // 隐藏加载状态
                 submitText.style.display = 'inline-block';
                 loadingSpinner.style.display = 'none';
                 submitButton.disabled = false;
@@ -1440,133 +1402,27 @@
         }
 
         async function handleDeleteKey(key) {
-            if (!confirm(`您确定要删除密钥 "${key}" 吗？此操作无法撤销。`)) {
-                return;
-            }
+            if (!confirm(`您确定要删除密钥 "${key}" 吗？此操作无法撤销。`)) return;
 
             try {
                 showLoading('data-page');
-                const response = await fetch(`/valuechain/deleteKey?key=${encodeURIComponent(key)}`);
+                // **MODIFIED**: Use POST with JSON body
+                const response = await fetch(`/valuechain/data/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key })
+                });
 
                 if (!response.ok) {
-                    throw new Error(`删除密钥失败。服务器状态码: ${response.status}`);
+                    const errData = await response.json();
+                    throw new Error(errData.error || `删除密钥失败，状态码: ${response.status}`);
                 }
-
-                // 成功, 刷新数据
                 await loadChainData();
-
             } catch (error) {
                 console.error('删除密钥时出错:', error);
-                alert(error.message); // 用简单的alert提示错误
+                alert(error.message);
             } finally {
                 hideLoading('data-page');
-            }
-        }
-
-
-        // 设置主页自动刷新
-        function setupHomeAutoRefresh() {
-            if (homeRefreshInterval) {
-                clearInterval(homeRefreshInterval);
-                homeRefreshInterval = null;
-            }
-
-            const autoRefreshToggle = document.getElementById('autoRefreshToggle');
-            if (autoRefreshToggle.checked) {
-                homeRefreshInterval = setInterval(() => {
-                    if (document.getElementById('home-page').style.display !== 'none') {
-                        refreshHomeData();
-                    }
-                }, 10000); // 10秒刷新
-            }
-        }
-
-        // 刷新主页数据
-        async function refreshHomeData() {
-            await loadOverviewData();
-            await loadBlocks(currentPage, pageSize);
-            updateRefreshStatus();
-        }
-
-        // 更新刷新状态
-        function updateRefreshStatus() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('zh-CN');
-            document.getElementById('refreshStatus').textContent = `最后更新: ${timeString}`;
-        }
-
-        // 切换标签页
-        function switchTab(tabId) {
-            currentTab = tabId;
-
-            // 更新标签页样式
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
-
-            // 显示对应内容
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${tabId}-tab`).classList.add('active');
-
-            // 加载对应数据
-            if (tabId === 'cpu') {
-                loadCPUData();
-            } else {
-                loadMemoryData();
-            }
-        }
-
-        // 设置自动刷新
-        function setupAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-                refreshInterval = null;
-            }
-
-            if (currentRefreshRate > 0) {
-                refreshInterval = setInterval(() => {
-                    if (document.getElementById('nodes-page').style.display !== 'none') {
-                        if (currentTab === 'cpu') {
-                            loadCPUData();
-                        } else {
-                            loadMemoryData();
-                        }
-                    }
-                }, currentRefreshRate * 1000);
-            }
-        }
-
-        // 显示指定页面
-        function showPage(page) {
-            // 隐藏所有页面
-            document.getElementById('home-page').style.display = 'none';
-            document.getElementById('block-detail-page').style.display = 'none';
-            document.getElementById('nodes-page').style.display = 'none';
-            document.getElementById('data-page').style.display = 'none';
-
-            // 更新导航激活状态
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-
-            // 显示目标页面
-            const targetPage = document.getElementById(`${page}-page`);
-            const targetLink = document.querySelector(`.nav-link[data-page="${page}"]`);
-            if (targetPage) {
-                targetPage.style.display = 'block';
-            }
-            if (targetLink) {
-                targetLink.classList.add('active');
-            }
-
-            // 如果切换到特定页面，加载其初始数据
-            if (page === 'nodes') {
-                loadCPUData();
-            } else if (page === 'data') {
-                loadChainData();
             }
         }
 
@@ -1574,7 +1430,8 @@
         async function loadOverviewData() {
             try {
                 showLoading('home-page');
-                const response = await fetch('/valuechain');
+                // **MODIFIED**: Updated API endpoint
+                const response = await fetch('/valuechain/info');
                 if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const data = await response.json();
 
@@ -1583,11 +1440,10 @@
                 document.getElementById('orgCount').textContent = data.orgCount || 0;
                 document.getElementById('chainCodeCount').textContent = data.chainCodeCount || 0;
                 document.getElementById('nodeCount').textContent = data.nodeCount || 0;
-
                 blockHeight = data.blockHeight || 0;
             } catch (error) {
                 console.error('加载概览数据失败:', error);
-                showError('home-page', '加载概览数据失败，请检查后端服务是否正常运行');
+                showError('home-page', '加载概览数据失败，请检查后端服务是否正常运行。');
             } finally {
                 hideLoading('home-page');
             }
@@ -1597,7 +1453,8 @@
         async function loadBlocks(pageNum, pageSize) {
             try {
                 showLoading('home-page');
-                const response = await fetch(`/valuechain/getBlockByPage?pageNum=${pageNum}&pageSize=${pageSize}`);
+                // **MODIFIED**: Updated API endpoint
+                const response = await fetch(`/valuechain/blocks?pageNum=${pageNum}&pageSize=${pageSize}`);
                 if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
 
                 const blocks = await response.json();
@@ -1612,65 +1469,58 @@
                 blocks.forEach(block => {
                     const row = document.createElement('tr');
                     row.className = 'block-row';
-                    row.setAttribute('data-block-num', block.BlockNumber || block.blockNumber);
-
-                    const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString('zh-CN') :
-                        block.timestamp ? new Date(block.timestamp).toLocaleString('zh-CN') : '-';
+                    // **MODIFIED**: Use camelCase `blockNumber`
+                    row.setAttribute('data-block-num', block.blockNumber);
+                    const timestamp = block.timestamp ? new Date(block.timestamp).toLocaleString('zh-CN') : '-';
 
                     row.innerHTML = `
-                        <td class="block-number">${block.BlockNumber || block.blockNumber || 0}</td>
-                        <td class="block-hash" title="${block.BlockHash || block.blockHash || ''}">
-                            ${(block.BlockHash || block.blockHash || '').substring(0, 20)}...
+                        <td class="block-number">${block.blockNumber || 0}</td>
+                        <td class="block-hash" title="${block.blockHash || ''}">
+                            ${(block.blockHash || '').substring(0, 20)}...
                         </td>
-                        <td><span class="tx-count">${block.TxCount || block.txCount || 0}</span></td>
+                        <td><span class="tx-count">${block.txCount || 0}</span></td>
                         <td class="timestamp">${timestamp}</td>
-                        <td>${formatBytes(block.BlockSize || block.blockSize || 0)}</td>
+                        <td>${formatBytes(block.blockSize || 0)}</td>
                     `;
-
                     row.addEventListener('click', function () {
                         showBlockDetail(this.getAttribute('data-block-num'));
                     });
-
                     tableBody.appendChild(row);
                 });
 
-                // 更新分页信息
                 document.getElementById('pageInfo').textContent = `第 ${pageNum + 1} 页`;
                 document.getElementById('prevPage').disabled = pageNum === 0;
                 document.getElementById('nextPage').disabled = (pageNum + 1) * pageSize >= blockHeight;
             } catch (error) {
                 console.error('加载区块列表失败:', error);
-                showError('home-page', '加载区块列表失败');
+                showError('home-page', '加载区块列表失败。');
             } finally {
                 hideLoading('home-page');
             }
         }
 
-
         // 显示区块详情
         async function showBlockDetail(blockNum) {
             try {
                 showLoading('block-detail-page');
-                const response = await fetch(`/valuechain/getBlockByNum?blockNum=${blockNum}`);
+                // **MODIFIED**: Updated API endpoint
+                const response = await fetch(`/valuechain/block?blockNum=${blockNum}`);
                 if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const block = await response.json();
 
-                document.getElementById('detail-blockNumber').textContent = block.BlockNumber || block.blockNumber || 0;
-                document.getElementById('detail-blockHash').textContent = block.BlockHash || block.blockHash || '';
-                document.getElementById('detail-previousHash').textContent = block.PreviousHash || block.previousHash || '';
-                document.getElementById('detail-dataHash').textContent = block.MerkleRoot || block.dataHash || '';
-                document.getElementById('detail-txCount').textContent = block.TxCount || block.txCount || 0;
-                document.getElementById('detail-blockSize').textContent = formatBytes(block.BlockSize || block.blockSize || 0);
+                // **MODIFIED**: Use camelCase fields from Go struct
+                document.getElementById('detail-blockNumber').textContent = block.blockNumber || 0;
+                document.getElementById('detail-blockHash').textContent = block.blockHash || '';
+                document.getElementById('detail-previousHash').textContent = block.previousHash || '';
+                document.getElementById('detail-dataHash').textContent = block.dataHash || '';
+                document.getElementById('detail-txCount').textContent = block.txCount || 0;
+                document.getElementById('detail-blockSize').textContent = formatBytes(block.blockSize || 0);
+                document.getElementById('detail-timestamp').textContent = block.timestamp ? new Date(block.timestamp).toLocaleString('zh-CN') : '-';
+                document.getElementById('detail-channelId').textContent = block.channelId || '-';
 
-                const timestamp = block.Timestamp ? new Date(block.Timestamp).toLocaleString('zh-CN') :
-                    block.timestamp ? new Date(block.timestamp).toLocaleString('zh-CN') : '-';
-                document.getElementById('detail-timestamp').textContent = timestamp;
-                document.getElementById('detail-channelId').textContent = block.ChannelID || block.channelId || '-';
-
-                // 填充交易列表
                 const transactionList = document.getElementById('transactionList');
                 transactionList.innerHTML = '';
-                const txIds = block.TxIDs || block.txIds || [];
+                const txIds = block.txIds || [];
                 if (txIds.length > 0) {
                     txIds.forEach(txId => {
                         const li = document.createElement('li');
@@ -1681,19 +1531,14 @@
                 } else {
                     transactionList.innerHTML = '<li class="transaction-item">此区块没有交易</li>';
                 }
-
                 showBlockDetailPage();
             } catch (error) {
                 console.error('加载区块详情失败:', error);
-                showError('block-detail-page', '加载区块详情失败');
+                showError('block-detail-page', '加载区块详情失败。');
             } finally {
                 hideLoading('block-detail-page');
             }
         }
-
-        // =========================================================
-        // == 密钥历史与交易详情功能 (已中文化)                ==
-        // =========================================================
 
         async function showKeyHistory(key) {
             const modal = document.getElementById('key-history-modal');
@@ -1709,7 +1554,8 @@
             keyName.textContent = `密钥 "${key}" 的历史记录`;
 
             try {
-                const response = await fetch(`/valuechain/getKeyHistory?key=${encodeURIComponent(key)}`);
+                // **MODIFIED**: Updated API endpoint
+                const response = await fetch(`/valuechain/data/history?key=${encodeURIComponent(key)}`);
                 if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const history = await response.json();
 
@@ -1720,44 +1566,29 @@
 
                 history.forEach(item => {
                     const row = document.createElement('tr');
-                    const txId = item.txId;
-                    const timestamp = item.timestamp;
-                    const isDelete = item.isDelete;
-                    const base64Value = item.value || '';
                     let valueDisplay = '';
 
-                    if (isDelete) {
+                    if (item.isDelete) {
                         valueDisplay = '<i>已删除</i>';
                     } else {
+                        const valueStr = item.value || '';
+                        // **MODIFIED**: Removed incorrect Base64 decoding. Directly try to parse as JSON.
                         try {
-                            const binaryString = atob(base64Value);
-                            const bytes = new Uint8Array(binaryString.length);
-                            for (let i = 0; i < binaryString.length; i++) {
-                                bytes[i] = binaryString.charCodeAt(i);
-                            }
-                            const decodedValue = new TextDecoder('utf-8').decode(bytes);
-
-                            try {
-                                const parsedJson = JSON.parse(decodedValue);
-                                valueDisplay = `<pre class="json-value">${JSON.stringify(parsedJson, null, 2)}</pre>`;
-                            } catch (jsonError) {
-                                valueDisplay = escapeHtml(decodedValue);
-                            }
-                        } catch (decodeError) {
-                            console.error('Base64/UTF-8解码错误:', decodeError);
-                            valueDisplay = '<i style="color:red;">[无效数据]</i>';
+                            const parsedJson = JSON.parse(valueStr);
+                            valueDisplay = `<pre class="json-value">${JSON.stringify(parsedJson, null, 2)}</pre>`;
+                        } catch (jsonError) {
+                            valueDisplay = escapeHtml(valueStr);
                         }
                     }
 
                     row.innerHTML = `
-                        <td><span class="clickable-txid" data-txid="${txId}">${txId.substring(0, 15)}...</span></td>
-                        <td>${new Date(timestamp).toLocaleString('zh-CN')}</td>
+                        <td><span class="clickable-txid" data-txid="${item.txId}">${item.txId.substring(0, 15)}...</span></td>
+                        <td>${new Date(item.timestamp).toLocaleString('zh-CN')}</td>
                         <td>${valueDisplay}</td>
-                        <td>${isDelete ? '是' : '否'}</td>
+                        <td>${item.isDelete ? '是' : '否'}</td>
                     `;
                     tableBody.appendChild(row);
                 });
-
             } catch (error) {
                 console.error('加载密钥历史记录失败:', error);
                 errorDiv.textContent = '加载密钥历史记录失败。';
@@ -1779,7 +1610,8 @@
             contentDiv.innerHTML = '';
 
             try {
-                const response = await fetch(`/valuechain/getTxByID?TxID=${encodeURIComponent(txId)}`);
+                // **MODIFIED**: Updated API endpoint and parameter name from TxID to txID
+                const response = await fetch(`/valuechain/transaction?txID=${encodeURIComponent(txId)}`);
                 if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
                 const txInfo = await response.json();
 
@@ -1800,26 +1632,20 @@
                     <div class="tx-detail-grid">
                         <span class="tx-detail-label">交易ID:</span>
                         <span class="tx-detail-value">${escapeHtml(txInfo.TxId)}</span>
-
                         <span class="tx-detail-label">通道ID:</span>
                         <span class="tx-detail-value">${escapeHtml(txInfo.ChannelId)}</span>
-
                         <span class="tx-detail-label">类型:</span>
                         <span class="tx-detail-value">${escapeHtml(txInfo.Type)}</span>
-
                         <span class="tx-detail-label">时间戳:</span>
                         <span class="tx-detail-value">${new Date(txInfo.Timestamp).toLocaleString('zh-CN')}</span>
-
                         <span class="tx-detail-label">大小:</span>
                         <span class="tx-detail-value">${formatBytes(txInfo.Size)}</span>
-
                         <span class="tx-detail-label">验证码:</span>
                         <span class="tx-detail-value">${txInfo.ValidationCode}</span>
                     </div>
                     <h4 style="margin-top: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 5px;">链码调用</h4>
                     ${chaincodeInfoHtml}
                 `;
-
             } catch (error) {
                 console.error('加载交易详情失败:', error);
                 errorDiv.textContent = '加载交易详情失败。';
@@ -1829,7 +1655,28 @@
             }
         }
 
-        // 加载CPU使用率数据
+        // 加载链上数据
+        async function loadChainData() {
+            try {
+                showLoading('data-page');
+                // **MODIFIED**: Updated API endpoint
+                const response = await fetch('/valuechain/data/all');
+                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                const data = await response.json();
+                allChainData = data || [];
+                displayChainData(allChainData);
+            } catch (error) {
+                console.error('加载链上数据失败:', error);
+                showError('data-page', '加载链上数据失败。');
+            } finally {
+                hideLoading('data-page');
+            }
+        }
+
+        // =========================================================
+        // == 节点监控
+        // =========================================================
+
         async function loadCPUData() {
             try {
                 showLoading('nodes-page');
@@ -1853,7 +1700,7 @@
 
                     const filteredData = nodeData.filter(d => (d.Timestamp ? new Date(d.Timestamp).getTime() : 0) >= startTime);
                     const latestData = nodeData[nodeData.length - 1];
-                    const cpuUsage = (latestData.CPUUsage || latestData.cpuUsage || 0).toFixed(2);
+                    const cpuUsage = (latestData.CPUUsage || 0).toFixed(2);
                     let cpuClass = 'cpu-low';
                     if (cpuUsage > 50) cpuClass = 'cpu-medium';
                     if (cpuUsage > 80) cpuClass = 'cpu-high';
@@ -1880,7 +1727,6 @@
             }
         }
 
-        // 加载内存使用率数据
         async function loadMemoryData() {
             try {
                 showLoading('nodes-page');
@@ -1904,8 +1750,8 @@
 
                     const filteredData = nodeData.filter(d => (d.Timestamp ? new Date(d.Timestamp).getTime() : 0) >= startTime);
                     const latestData = nodeData[nodeData.length - 1];
-                    const usedMemory = latestData.UsedMemory || latestData.usedMemory || 0;
-                    const totalMemory = latestData.TotalMemory || latestData.totalMemory || 1;
+                    const usedMemory = latestData.UsedMemory || 0;
+                    const totalMemory = latestData.TotalMemory || 1;
                     const memoryUsagePercent = ((usedMemory / totalMemory) * 100).toFixed(2);
                     let memoryClass = 'memory-low';
                     if (memoryUsagePercent > 70) memoryClass = 'memory-medium';
@@ -1934,55 +1780,102 @@
             }
         }
 
-        // 加载链上数据
-        async function loadChainData() {
-            try {
-                showLoading('data-page');
-                const response = await fetch('/valuechain/getAllData');
-                if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
-                const data = await response.json();
-                allChainData = data || [];
-                displayChainData(allChainData);
-            } catch (error) {
-                console.error('加载链上数据失败:', error);
-                showError('data-page', '加载链上数据失败');
-            } finally {
-                hideLoading('data-page');
+        // =========================================================
+        // == UI 辅助函数
+        // =========================================================
+        function setupHomeAutoRefresh() {
+            if (homeRefreshInterval) clearInterval(homeRefreshInterval);
+            if (document.getElementById('autoRefreshToggle').checked) {
+                homeRefreshInterval = setInterval(() => {
+                    if (document.getElementById('home-page').style.display !== 'none') {
+                        refreshHomeData();
+                    }
+                }, 10000);
             }
         }
 
-        // 显示链上数据
+        async function refreshHomeData() {
+            await loadOverviewData();
+            await loadBlocks(currentPage, pageSize);
+            updateRefreshStatus();
+        }
+
+        function updateRefreshStatus() {
+            document.getElementById('refreshStatus').textContent = `最后更新: ${new Date().toLocaleTimeString('zh-CN')}`;
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            if (tabId === 'cpu') loadCPUData();
+            else loadMemoryData();
+        }
+
+        function setupAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            if (currentRefreshRate > 0) {
+                refreshInterval = setInterval(() => {
+                    if (document.getElementById('nodes-page').style.display !== 'none') {
+                        if (currentTab === 'cpu') loadCPUData();
+                        else loadMemoryData();
+                    }
+                }, currentRefreshRate * 1000);
+            }
+        }
+
+        function showPage(page) {
+            document.querySelectorAll('#home-page, #block-detail-page, #nodes-page, #data-page').forEach(p => p.style.display = 'none');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+            const targetPage = document.getElementById(`${page}-page`);
+            const targetLink = document.querySelector(`.nav-link[data-page="${page}"]`);
+            if (targetPage) targetPage.style.display = 'block';
+            if (targetLink) targetLink.classList.add('active');
+
+            if (page === 'nodes') {
+                if (currentTab === 'cpu') loadCPUData();
+                else loadMemoryData();
+            } else if (page === 'data') {
+                loadChainData();
+            } else if (page === 'home') {
+                // Return to home, reset page to 0 and reload.
+                currentPage = 0;
+                refreshHomeData();
+            }
+        }
+
         function displayChainData(data) {
             const tableBody = document.getElementById('dataTableBody');
             tableBody.innerHTML = '';
 
             if (!data || data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="3" class="empty-state"><div class="icon">📝</div><p>暂无链上数据</p></td></tr>';
                 return;
             }
 
             data.forEach((item, index) => {
                 const row = document.createElement('tr');
-                const key = item.Key || item.key || '';
-                let value = item.Value || item.value || '';
-                let displayIsJson = item.IsJSON || item.isJson || false;
-
+                // **MODIFIED**: Use camelCase `key` and `value`
+                const key = item.key || '';
+                const value = item.value || '';
+                let isJson = false;
                 let valueDisplay = value;
-                if (typeof value === 'object' && value !== null) {
-                    valueDisplay = JSON.stringify(value, null, 2);
-                    displayIsJson = true;
-                } else if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
+
+                if (typeof value === 'string' && (value.trim().startsWith('{') || value.trim().startsWith('['))) {
                     try {
                         valueDisplay = JSON.stringify(JSON.parse(value), null, 2);
-                        displayIsJson = true;
-                    } catch (e) { /* 不是合法的JSON，按原样显示 */ }
+                        isJson = true;
+                    } catch (e) { /* Not valid JSON, display as is */ }
                 }
 
                 row.innerHTML = `
                     <td class="data-key" title="${escapeHtml(key)}">${escapeHtml(key)}</td>
                     <td class="data-value">
-                        ${displayIsJson ?
-                        `<div class="json-container">
+                        ${isJson ? `
+                        <div class="json-container">
                             <div class="json-controls">
                                 <button class="json-toggle" data-index="${index}"><span class="json-expand-icon"></span>JSON</button>
                                 <span class="json-badge">JSON</span>
@@ -1992,7 +1885,6 @@
                         `<span title="${escapeHtml(valueDisplay)}">${escapeHtml(truncateText(valueDisplay, 100))}</span>`
                     }
                     </td>
-                    <td>${displayIsJson ? 'JSON' : '字符串'}</td>
                     <td>
                         <button class="action-button view-history-btn" data-key="${escapeHtml(key)}">历史记录</button>
                         <button class="action-button delete delete-key-btn" data-key="${escapeHtml(key)}">删除</button>
@@ -2008,7 +1900,6 @@
             });
         }
 
-        // 切换JSON显示/隐藏
         function toggleJsonDisplay(index) {
             const content = document.getElementById(`json-content-${index}`);
             const icon = document.querySelector(`.json-toggle[data-index="${index}"] .json-expand-icon`);
@@ -2016,7 +1907,6 @@
             icon.classList.toggle('expanded');
         }
 
-        // HTML转义函数
         function escapeHtml(text) {
             if (typeof text !== 'string') return text;
             const div = document.createElement('div');
@@ -2024,13 +1914,11 @@
             return div.innerHTML;
         }
 
-        // 文本截断函数
         function truncateText(text, maxLength) {
             if (typeof text !== 'string' || text.length <= maxLength) return text;
             return text.substring(0, maxLength) + '...';
         }
 
-        // 过滤链上数据
         function filterChainData() {
             const searchTerm = document.getElementById('dataSearch').value.toLowerCase();
             if (!searchTerm) {
@@ -2038,28 +1926,22 @@
                 return;
             }
             const filteredData = allChainData.filter(item => {
-                const key = (item.Key || item.key || '').toLowerCase();
-                const value = String(item.Value || item.value || '').toLowerCase();
+                const key = (item.key || '').toLowerCase();
+                const value = String(item.value || '').toLowerCase();
                 return key.includes(searchTerm) || value.includes(searchTerm);
             });
             displayChainData(filteredData);
         }
 
-        // 创建CPU使用率图表
         function createCPUChart(nodeName, dataToDisplay) {
-            const canvasId = `cpu-chart-${nodeName}`;
-            const canvas = document.getElementById(canvasId);
+            const canvas = document.getElementById(`cpu-chart-${nodeName}`);
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
+            const labels = dataToDisplay.map(d => new Date(d.Timestamp).toLocaleTimeString('zh-CN'));
+            const dataPoints = dataToDisplay.map(d => (d.CPUUsage || 0).toFixed(2));
 
-            const labels = dataToDisplay.map(data => new Date(data.Timestamp || 0).toLocaleTimeString('zh-CN'));
-            const dataPoints = dataToDisplay.map(data => (data.CPUUsage || data.cpuUsage || 0).toFixed(2));
-
-            if (cpuCharts[nodeName]) {
-                cpuCharts[nodeName].destroy();
-            }
-
-            cpuCharts[nodeName] = new Chart(ctx, {
+            if (cpuCharts[nodeName]) cpuCharts[nodeName].destroy();
+            cpuCharts[nodeName] = new Chart(ctx, { /* Chart config... */
                 type: 'line',
                 data: {
                     labels: labels,
@@ -2077,34 +1959,21 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } },
-                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
-                    },
+                    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }, x: { ticks: { maxRotation: 45, minRotation: 45 } } },
                     plugins: { legend: { display: false } }
                 }
             });
         }
 
-        // 创建内存使用率图表
         function createMemoryChart(nodeName, dataToDisplay) {
-            const canvasId = `memory-chart-${nodeName}`;
-            const canvas = document.getElementById(canvasId);
+            const canvas = document.getElementById(`memory-chart-${nodeName}`);
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
+            const labels = dataToDisplay.map(d => new Date(d.Timestamp).toLocaleTimeString('zh-CN'));
+            const dataPoints = dataToDisplay.map(d => ((d.UsedMemory || 0) / (d.TotalMemory || 1) * 100).toFixed(2));
 
-            const labels = dataToDisplay.map(data => new Date(data.Timestamp || 0).toLocaleTimeString('zh-CN'));
-            const dataPoints = dataToDisplay.map(data => {
-                const used = data.UsedMemory || data.usedMemory || 0;
-                const total = data.TotalMemory || data.totalMemory || 1;
-                return ((used / total) * 100).toFixed(2);
-            });
-
-            if (memoryCharts[nodeName]) {
-                memoryCharts[nodeName].destroy();
-            }
-
-            memoryCharts[nodeName] = new Chart(ctx, {
+            if (memoryCharts[nodeName]) memoryCharts[nodeName].destroy();
+            memoryCharts[nodeName] = new Chart(ctx, { /* Chart config... */
                 type: 'line',
                 data: {
                     labels: labels,
@@ -2122,29 +1991,18 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } },
-                        x: { ticks: { maxRotation: 45, minRotation: 45 } }
-                    },
+                    scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }, x: { ticks: { maxRotation: 45, minRotation: 45 } } },
                     plugins: { legend: { display: false } }
                 }
             });
         }
 
-        // 显示主页
-        function showHomePage() {
-            showPage('home');
-        }
-
-        // 显示区块详情页面
+        function showHomePage() { showPage('home'); }
         function showBlockDetailPage() {
-            document.getElementById('home-page').style.display = 'none';
+            document.querySelectorAll('#home-page, #nodes-page, #data-page').forEach(p => p.style.display = 'none');
             document.getElementById('block-detail-page').style.display = 'block';
-            document.getElementById('nodes-page').style.display = 'none';
-            document.getElementById('data-page').style.display = 'none';
         }
 
-        // 显示加载状态
         function showLoading(pageId) {
             const pageElement = document.getElementById(pageId);
             if (!pageElement) return;
@@ -2158,30 +2016,21 @@
             }
         }
 
-        // 隐藏加载状态
         function hideLoading(pageId) {
-            const pageElement = document.getElementById(pageId);
-            if (!pageElement) return;
-            const overlay = pageElement.querySelector('.loading-overlay');
-            if (overlay) {
-                overlay.remove();
-            }
+            const overlay = document.getElementById(pageId)?.querySelector('.loading-overlay');
+            if (overlay) overlay.remove();
         }
 
-        // 显示错误信息
         function showError(pageId, message) {
+            const container = document.getElementById(pageId)?.querySelector('.container, main');
+            if (!container) return;
+            container.querySelector('.error-message')?.remove();
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
-            const container = document.getElementById(pageId)?.querySelector('.container, main');
-            if (container) {
-                // 移除旧的错误提示
-                container.querySelector('.error-message')?.remove();
-                container.insertBefore(errorDiv, container.firstChild);
-            }
+            container.insertBefore(errorDiv, container.firstChild);
         }
 
-        // 格式化字节大小
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 Bytes';
             const k = 1024;

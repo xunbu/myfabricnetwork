@@ -36,9 +36,8 @@ func (s *SmartContract) QueryByKey(ctx contractapi.TransactionContextInterface, 
 }
 
 type QueryRichResult struct {
-	Key    string      `json:"key"`
-	Value  interface{} `json:"value"`
-	IsJSON bool        `json:"isJson"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 func (s *SmartContract) QueryByRange(ctx contractapi.TransactionContextInterface, start string, end string) ([]QueryRichResult, error) {
@@ -54,58 +53,35 @@ func (s *SmartContract) QueryByRange(ctx contractapi.TransactionContextInterface
 		if err != nil {
 			return nil, err
 		}
-		result := QueryRichResult{Key: queryResponse.Key}
-		var jsonData interface{}
-		if err := json.Unmarshal(queryResponse.Value, &jsonData); err == nil {
-			result.Value = jsonData
-			result.IsJSON = true
-		} else {
-			result.Value = string(queryResponse.Value)
-			result.IsJSON = false
-		}
+		result := QueryRichResult{Key: queryResponse.Key, Value: string(queryResponse.Value)}
 		results = append(results, result)
 	}
 	return results, nil
 }
 
-func (s *SmartContract) QueryByRichAsJson(ctx contractapi.TransactionContextInterface, richQuery string) ([]byte, error) {
+func (s *SmartContract) QueryByRich(ctx contractapi.TransactionContextInterface, richQuery string) ([]QueryRichResult, error) {
 	// query := fmt.Sprintf(`{"selector":{"model_label":"%s"}}`, modelValue)//根据模块（存储、采集、管控）查询相应的数据
 	// query := fmt.Sprintf(`{"selector":{"database_label":"%s"}}`, labelValue)// 根据数据库查询相应的表元数据
 	resultsIterator, err := ctx.GetStub().GetQueryResult(richQuery)
 	if err != nil {
-		return nil, fmt.Errorf("failed to iterate query result: %v", err)
+		return nil, err
 	}
 	defer resultsIterator.Close()
-	results := make([]map[string]interface{}, 0)
+
+	var results []QueryRichResult
 	for resultsIterator.HasNext() {
 		queryResponse, err := resultsIterator.Next()
 		if err != nil {
-			return nil, fmt.Errorf("failed to iterate query result: %v", err)
+			return nil, err
 		}
-		var record map[string]interface{}
-		if err := json.Unmarshal(queryResponse.Value, &record); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal record %v", err)
-		}
-		results = append(results, record)
+		result := QueryRichResult{Key: queryResponse.Key, Value: string(queryResponse.Value)}
+		results = append(results, result)
 	}
-	v, err := json.Marshal(results)
-	if err != nil {
-		return nil, fmt.Errorf("can't marshal data ,%v", err)
-	}
-	return v, nil
-}
-
-// 查询数据并以string形式返回
-func (s *SmartContract) QueryByKeyAsString(ctx contractapi.TransactionContextInterface, key string) (string, error) {
-	v, err := s.QueryByKey(ctx, key)
-	if err != nil {
-		return "", err
-	}
-	return string(v), nil
+	return results, nil
 }
 
 // string格式数据上链(用于企业数字签名上链)
-func (s *SmartContract) PutString(ctx contractapi.TransactionContextInterface, key string, value string) error {
+func (s *SmartContract) PutValue(ctx contractapi.TransactionContextInterface, key string, value string) error {
 	err := ctx.GetStub().PutState(key, []byte(value))
 	if err != nil {
 		return fmt.Errorf("error in PutState, key:%v,value:%v", key, value)
@@ -117,10 +93,11 @@ func (s *SmartContract) PutKVs(ctx contractapi.TransactionContextInterface, kvSt
 	var kvmap map[string]string
 	err := json.Unmarshal([]byte(kvString), &kvmap)
 	if err != nil {
-		return fmt.Errorf("fail in unmarshal kvString %w", kvString)
+		return fmt.Errorf("fail in unmarshal kvString %w", err)
 	}
 	for k, v := range kvmap {
-		err := ctx.GetStub().PutState(k, []byte(v))
+
+		err = ctx.GetStub().PutState(k, []byte(v))
 		if err != nil {
 			return fmt.Errorf("error in PutState, key:%v,value:%v", k, v)
 		}
@@ -128,8 +105,8 @@ func (s *SmartContract) PutKVs(ctx contractapi.TransactionContextInterface, kvSt
 	return nil
 }
 
-// 更新数据 (string)
-func (s *SmartContract) UpdateString(ctx contractapi.TransactionContextInterface, key string, value string) error {
+// 更新数据
+func (s *SmartContract) UpdateByKey(ctx contractapi.TransactionContextInterface, key string, value string) error {
 	exists, err := s.KeyExists(ctx, key)
 	if err != nil {
 		return err
@@ -137,7 +114,7 @@ func (s *SmartContract) UpdateString(ctx contractapi.TransactionContextInterface
 	if !exists {
 		return fmt.Errorf("the key %s does not exist", key)
 	}
-	return s.PutString(ctx, key, value)
+	return s.PutValue(ctx, key, value)
 }
 
 func (s *SmartContract) DeleteByKey(ctx contractapi.TransactionContextInterface, key string) error {
@@ -159,7 +136,7 @@ type KeyHistory struct {
 	TxId      string    `json:"txId"`
 	Timestamp time.Time `json:"timestamp"`
 	IsDelete  bool      `json:"isDelete"`
-	Value     []byte    `json:"value"`
+	Value     string    `json:"value"`
 }
 
 func (s *SmartContract) GetKeyHistory(ctx contractapi.TransactionContextInterface, key string) ([]KeyHistory, error) {
@@ -195,7 +172,7 @@ func (s *SmartContract) GetKeyHistory(ctx contractapi.TransactionContextInterfac
 			TxId:      record.TxId,
 			Timestamp: timestamp,
 			IsDelete:  record.IsDelete,
-			Value:     recordValue,
+			Value:     string(recordValue),
 		}
 
 		history = append(history, historyItem)

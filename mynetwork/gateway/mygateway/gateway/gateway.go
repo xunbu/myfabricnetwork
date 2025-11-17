@@ -153,8 +153,8 @@ func SubmitTransaction(gw *client.Gateway, channelName, chainCodeName, funcName 
 }
 
 // 写入数据
-func PutString(gw *client.Gateway, channelName string, chaincodeName string, key string, data string) ([]byte, error) {
-	return SubmitTransaction(gw, channelName, chaincodeName, "PutString", key, data)
+func PutValue(gw *client.Gateway, channelName string, chaincodeName string, key string, data string) ([]byte, error) {
+	return SubmitTransaction(gw, channelName, chaincodeName, "PutValue", key, data)
 }
 
 // 写入map
@@ -164,7 +164,7 @@ func PutMap(gw *client.Gateway, channelName string, chaincodeName string, key st
 		return nil, fmt.Errorf("JSON 序列化失败: %w", err)
 	}
 	jsonString := string(jsonBytes)
-	return SubmitTransaction(gw, channelName, chaincodeName, "PutString", key, jsonString)
+	return SubmitTransaction(gw, channelName, chaincodeName, "PutValue", key, jsonString)
 }
 
 // 写入map
@@ -177,9 +177,14 @@ func PutKvs(gw *client.Gateway, channelName string, chaincodeName string, KVMap 
 	return SubmitTransaction(gw, channelName, chaincodeName, "PutKVs", string(v))
 }
 
-func GetValue(gw *client.Gateway, channelName string, chaincodeName string, key string) ([]byte, error) {
-	return EvaluateTransaction(gw, channelName, chaincodeName, "QueryByKey", key)
+func GetValue(gw *client.Gateway, channelName string, chaincodeName string, key string) (string, error) {
+	v, err := EvaluateTransaction(gw, channelName, chaincodeName, "QueryByKey", key)
+	if err != nil {
+		return "", err
+	}
+	return string(v), nil
 }
+
 func DeleteKey(gw *client.Gateway, channelName string, chaincodeName string, key string) ([]byte, error) {
 	return SubmitTransaction(gw, channelName, chaincodeName, "DeleteByKey", key)
 }
@@ -375,12 +380,12 @@ func GetAllData(gw *client.Gateway, channelName string, chaincodeName string) ([
 	if len(v) == 0 {
 		return []chaincode.QueryRichResult{}, nil
 	}
-	var results []chaincode.QueryRichResult
-	err = json.Unmarshal(v, &results)
+	var richResults []chaincode.QueryRichResult
+	err = json.Unmarshal(v, &richResults)
 	if err != nil {
 		return nil, err
 	}
-	return results, nil
+	return richResults, nil
 }
 
 type Txinfo struct {
@@ -479,7 +484,7 @@ func GetTxByID(gw *client.Gateway, channelName string, TxID string) (*Txinfo, er
 }
 
 func GetKeyHistory(gw *client.Gateway, channelName string, chaincodeName, key string) (*[]chaincode.KeyHistory, error) {
-	v, err := EvaluateTransaction(gw, channelName, "basic", "GetKeyHistory", key)
+	v, err := EvaluateTransaction(gw, channelName, chaincodeName, "GetKeyHistory", key)
 	if err != nil {
 		return nil, err
 	}
