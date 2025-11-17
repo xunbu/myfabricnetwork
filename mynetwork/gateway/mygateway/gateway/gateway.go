@@ -372,20 +372,95 @@ func GetBlockByNum(gw *client.Gateway, channelName string, blockNum uint64) (*Bl
 	return blockInfo, nil
 }
 
+//	func GetAllData(gw *client.Gateway, channelName string, chaincodeName string) ([]chaincode.QueryRichResult, error) {
+//		v, err := EvaluateTransaction(gw, channelName, chaincodeName, "QueryByRange", "", "")
+//		if err != nil {
+//			return nil, err
+//		}
+//		if len(v) == 0 {
+//			return []chaincode.QueryRichResult{}, nil
+//		}
+//		var richResults []chaincode.QueryRichResult
+//		err = json.Unmarshal(v, &richResults)
+//		if err != nil {
+//			return nil, err
+//		}
+//		return richResults, nil
+//	}
 func GetAllData(gw *client.Gateway, channelName string, chaincodeName string) ([]chaincode.QueryRichResult, error) {
-	v, err := EvaluateTransaction(gw, channelName, chaincodeName, "QueryByRange", "", "")
+	// 使用QueryByRich的版本
+	query := map[string]interface{}{
+		"selector": map[string]interface{}{}, // 空选择器匹配所有文档
+	}
+
+	queryBytes, err := json.Marshal(query)
 	if err != nil {
 		return nil, err
 	}
+
+	v, err := EvaluateTransaction(gw, channelName, chaincodeName, "QueryByRich", string(queryBytes))
+	if err != nil {
+		return nil, err
+	}
+
 	if len(v) == 0 {
 		return []chaincode.QueryRichResult{}, nil
 	}
+
 	var richResults []chaincode.QueryRichResult
 	err = json.Unmarshal(v, &richResults)
 	if err != nil {
 		return nil, err
 	}
+
 	return richResults, nil
+}
+
+// 分页查询结果
+type RichPageResult struct {
+	Results []chaincode.QueryRichResult `json:"results"`
+	HasMore bool                        `json:"hasMore"`
+	Page    int                         `json:"page"`
+	Total   int                         `json:"total"`
+}
+
+func GetAllDataByPageWithLimit(gw *client.Gateway, channelName string, chaincodeName string, page int, pageSize int) (*RichPageResult, error) {
+	skip := (page - 1) * pageSize
+
+	query := map[string]interface{}{
+		"selector": map[string]interface{}{},
+		"limit":    pageSize,
+		"skip":     skip,
+		"sort":     [](map[string]string){{"_id": "asc"}}, // 按ID排序确保一致性
+	}
+
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := EvaluateTransaction(gw, channelName, chaincodeName, "QueryByRich", string(queryBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	var results []chaincode.QueryRichResult
+	if len(v) > 0 {
+		err = json.Unmarshal(v, &results)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 判断是否有更多数据
+	hasMore := len(results) == pageSize
+
+	return &RichPageResult{
+		Results: results,
+		HasMore: hasMore,
+		Page:    page,
+		Total:   skip + len(results), // 近似总数
+	}, nil
 }
 
 type Txinfo struct {
