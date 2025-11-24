@@ -1,10 +1,13 @@
+com/guolong/gateway/service/AdminService.class
 com/guolong/gateway/utils/FileUtils.class
+com/guolong/gateway/utils/ShellUtils.class
 com/guolong/gateway/dto/BlockInfo$BlockInfoBuilder.class
 com/guolong/gateway/dto/ChainCodeInfo$ChainCodeInfoBuilder.class
 com/guolong/gateway/config/FabricGatewayFactory.class
 com/guolong/gateway/dto/TxInfo$TxInfoBuilder.class
 com/guolong/gateway/service/ChaincodeService$3.class
 com/guolong/gateway/service/LedgerService.class
+com/guolong/gateway/service/AdminService$1.class
 com/guolong/gateway/Main.class
 com/guolong/gateway/dto/RichPageResult.class
 com/guolong/gateway/dto/TxInfo.class

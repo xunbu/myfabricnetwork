@@ -6,6 +6,8 @@
 /home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/dto/QueryRichResult.java
 /home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/dto/RichPageResult.java
 /home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/dto/TxInfo.java
+/home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/service/AdminService.java
 /home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/service/ChaincodeService.java
 /home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/service/LedgerService.java
 /home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/utils/FileUtils.java
+/home/qinhan/fabric/mynetwork/gateway/mygateway-java/src/main/java/com/guolong/gateway/utils/ShellUtils.java
