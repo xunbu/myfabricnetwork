@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+fabric:
+  msp-id: Org1MSP
+  channel-name: mychannel
+  chaincode-name: basic
+  peer-endpoint: localhost:7051
+  override-auth: peer0.guolong.com
+  
+  # 基础加密文件路径
+  crypto-base: /home/qinhan/fabric/mynetwork/organizations/peerOrganizations/guolong.com
+  
+  # SDK 连接用的证书
+  cert-path: ${fabric.crypto-base}/users/User1@guolong.com/msp/signcerts
+  key-path: ${fabric.crypto-base}/users/User1@guolong.com/msp/keystore
+  tls-cert-path: ${fabric.crypto-base}/peers/peer0.guolong.com/tls/ca.crt
+  
+  # CLI 专用配置
+  msp-config-path: ${fabric.crypto-base}/users/User1@guolong.com/msp
+  fabric-cfg-path: /home/qinhan/fabric/mynetwork/config
+  fabric-bin-path: /home/qinhan/fabric/mynetwork/bin
+
+docker:
+  socket: unix:///var/run/docker.sock
+  # 使用逗号分隔，避免 @Value 注入列表时的解析错误
+  containers: peer0.guolong.com,peer1.guolong.com,peer2.guolong.com,orderer.guolong.com

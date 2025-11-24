@@ -29,8 +29,7 @@ public class Main {
     private static final String CHAINCODE_NAME = "basic";
 
     // 连接地址
-    // 注意：CLI 工具(discover)对 TLS 校验非常严格。如果 /etc/hosts 没有配置映射，
-    // discover 连接 localhost 可能会失败。建议配置 hosts: 127.0.0.1 peer0.guolong.com
+    // 建议在 /etc/hosts 中配置 127.0.0.1 peer0.guolong.com 以确保 CLI 工具连接顺畅
     private static final String PEER_ENDPOINT = "localhost:7051";
     
     // 域名覆盖 (用于 TLS 握手时验证证书)
@@ -48,12 +47,14 @@ public class Main {
     // Peer 节点的 TLS CA 证书 (用于建立可信连接)
     private static final String TLS_CERT_PATH = CRYPTO_PATH + "/peers/peer0.guolong.com/tls/ca.crt";
 
-    // [CLI 专用] MSP 文件夹路径 (指向 msp 目录，而不是 signcerts)
+    // [CLI 专用] MSP 文件夹路径 (指向 msp 目录)
     private static final String MSP_CONFIG_PATH = CRYPTO_PATH + "/users/User1@guolong.com/msp";
     
     // [CLI 专用] Fabric Config 路径 (指向包含 core.yaml 的文件夹)
-    // ⚠️ 请确认此路径下存在 core.yaml (通常在 fabric-samples/config)
     private static final String FABRIC_CFG_PATH = "/home/qinhan/fabric/mynetwork/config";
+    
+    // [CLI 专用] Fabric Bin 路径 (指向包含 peer 和 discover 命令的文件夹)
+    private static final String FABRIC_BIN_PATH = "/home/qinhan/fabric/mynetwork/bin";
 
     public static void main(String[] args) {
         ManagedChannel channel = null;
@@ -69,66 +70,68 @@ public class Main {
             // 初始化所有服务
             ChaincodeService chaincodeService = new ChaincodeService(gateway);
             LedgerService ledgerService = new LedgerService(gateway);
-            AdminService adminService = new AdminService(gateway);
-
-            // // ==========================================
-            // // A. 业务链码测试
-            // // ==========================================
-            // System.out.println("\n========== A. 业务链码测试 ==========");
             
-            // String testKey = "asset_" + System.currentTimeMillis();
+            // [关键] 实例化 AdminService 时传入 bin 路径
+            AdminService adminService = new AdminService(gateway, FABRIC_BIN_PATH);
+
+            // ==========================================
+            // A. 业务链码测试
+            // ==========================================
+            System.out.println("\n========== A. 业务链码测试 ==========");
             
-            // // 1. 上链
-            // System.out.printf("正在写入数据 Key: %s...%n", testKey);
-            // chaincodeService.putValue(CHANNEL_NAME, CHAINCODE_NAME, testKey, "{\"color\":\"red\",\"size\":10}");
-            // System.out.println("写入成功");
-
-            // // 2. 查询
-            // System.out.print("正在查询数据: ");
-            // String value = chaincodeService.getValue(CHANNEL_NAME, CHAINCODE_NAME, testKey);
-            // System.out.println("查询结果: " + value);
-
-            // // 3. Map写入
-            // Map<String, Object> mapData = new HashMap<>();
-            // mapData.put("name", "GatewayJava");
-            // mapData.put("version", 1.0);
-            // chaincodeService.putMap(CHANNEL_NAME, CHAINCODE_NAME, testKey, mapData);
-            // System.out.println("Map 数据更新成功");
-
-            // // 4. 历史记录
-            // List<KeyHistory> history = chaincodeService.getKeyHistory(CHANNEL_NAME, CHAINCODE_NAME, testKey);
-            // System.out.printf("Key历史记录条数: %d%n", history.size());
-
-            // // 5. 分页查询
-            // RichPageResult pageResult = chaincodeService.getAllDataByPageWithLimit(CHANNEL_NAME, CHAINCODE_NAME, 1, 5);
-            // System.out.printf("分页查询第1页，共 %d 条数据%n", pageResult.getResults().size());
-
-            // // ==========================================
-            // // B. 系统账本测试 (QSCC/CSCC)
-            // // ==========================================
-            // System.out.println("\n========== B. 系统账本测试 (QSCC/CSCC) ==========");
-
-            // // 1. 区块高度
-            // long height = ledgerService.getBlockHeight(CHANNEL_NAME);
-            // System.out.println("当前区块高度: " + height);
+            String testKey = "asset_" + System.currentTimeMillis();
             
-            // // 2. 最新区块详情
-            // if (height > 0) {
-            //     BlockInfo blockInfo = ledgerService.getBlockByNum(CHANNEL_NAME, height - 1);
-            //     System.out.printf("最新区块 [#%d] Hash: %s...%n", blockInfo.getBlockNumber(), blockInfo.getBlockHash().substring(0, 10));
+            // 1. 上链
+            System.out.printf("正在写入数据 Key: %s...%n", testKey);
+            chaincodeService.putValue(CHANNEL_NAME, CHAINCODE_NAME, testKey, "{\"color\":\"red\",\"size\":10}");
+            System.out.println("写入成功");
+
+            // 2. 查询
+            System.out.print("正在查询数据: ");
+            String value = chaincodeService.getValue(CHANNEL_NAME, CHAINCODE_NAME, testKey);
+            System.out.println("查询结果: " + value);
+
+            // 3. Map写入
+            Map<String, Object> mapData = new HashMap<>();
+            mapData.put("name", "GatewayJava");
+            mapData.put("version", 1.0);
+            chaincodeService.putMap(CHANNEL_NAME, CHAINCODE_NAME, testKey, mapData);
+            System.out.println("Map 数据更新成功");
+
+            // 4. 历史记录
+            List<KeyHistory> history = chaincodeService.getKeyHistory(CHANNEL_NAME, CHAINCODE_NAME, testKey);
+            System.out.printf("Key历史记录条数: %d%n", history.size());
+
+            // 5. 分页查询
+            RichPageResult pageResult = chaincodeService.getAllDataByPageWithLimit(CHANNEL_NAME, CHAINCODE_NAME, 1, 5);
+            System.out.printf("分页查询第1页，共 %d 条数据%n", pageResult.getResults().size());
+
+            // ==========================================
+            // B. 系统账本测试 (QSCC/CSCC)
+            // ==========================================
+            System.out.println("\n========== B. 系统账本测试 (QSCC/CSCC) ==========");
+
+            // 1. 区块高度
+            long height = ledgerService.getBlockHeight(CHANNEL_NAME);
+            System.out.println("当前区块高度: " + height);
+            
+            // 2. 最新区块详情
+            if (height > 0) {
+                BlockInfo blockInfo = ledgerService.getBlockByNum(CHANNEL_NAME, height - 1);
+                System.out.printf("最新区块 [#%d] Hash: %s...%n", blockInfo.getBlockNumber(), blockInfo.getBlockHash().substring(0, 10));
                 
-            //     // 3. 交易详情
-            //     if (!history.isEmpty()) {
-            //         String lastTxId = history.get(0).getTxId();
-            //         System.out.println("正在查询交易详情 TxId: " + lastTxId);
-            //         TxInfo txInfo = ledgerService.getTxById(CHANNEL_NAME, lastTxId);
-            //         System.out.println("交易详情: " + txInfo);
-            //     }
-            // }
+                // 3. 交易详情
+                if (!history.isEmpty()) {
+                    String lastTxId = history.get(0).getTxId();
+                    System.out.println("正在查询交易详情 TxId: " + lastTxId);
+                    TxInfo txInfo = ledgerService.getTxById(CHANNEL_NAME, lastTxId);
+                    System.out.println("交易详情: " + txInfo);
+                }
+            }
 
-            // // 4. 组织数量
-            // int orgCount = ledgerService.getOrganizationCount(CHANNEL_NAME);
-            // System.out.println("通道组织数量: " + orgCount);
+            // 4. 组织数量
+            int orgCount = ledgerService.getOrganizationCount(CHANNEL_NAME);
+            System.out.println("通道组织数量: " + orgCount);
 
             // ==========================================
             // C. Admin 管理功能测试 (CLI + SDK)
@@ -138,10 +141,11 @@ public class Main {
             // 1. 获取已安装链码数量 (CLI 实现 - peer lifecycle)
             System.out.print("1. 查询已提交链码数量... ");
             try {
+                // 注意：这里不再传递 FABRIC_BIN_PATH，因为构造函数已经传了
                 int ccCount = adminService.getChaincodeCount(
                     CHANNEL_NAME,
                     PEER_ENDPOINT,
-                    OVERRIDE_AUTH,    // [关键] 传入域名覆盖，解决 localhost TLS 报错
+                    OVERRIDE_AUTH,    
                     MSP_ID,
                     MSP_CONFIG_PATH,
                     TLS_CERT_PATH,
@@ -170,13 +174,14 @@ public class Main {
                 Path userKeyPath = FileUtils.getFirstFile(KEY_PATH);
                 Path userCertPath = FileUtils.getFirstFile(CERT_PATH);
 
+                // 注意：这里不再传递 FABRIC_BIN_PATH
                 int peerCount = adminService.getPeersCount(
                         CHANNEL_NAME, 
                         PEER_ENDPOINT, 
                         MSP_ID, 
                         userCertPath.toAbsolutePath().toString(), 
                         userKeyPath.toAbsolutePath().toString(),
-                        TLS_CERT_PATH // [新增] 传入 peerTLSCA 路径，对应 discover --peerTLSCA
+                        TLS_CERT_PATH 
                 );
                 System.out.println("在线 Peer 数量: " + peerCount);
                 System.out.println("网络总节点数 (Peers + Orderers): " + (peerCount + ordererCount));

@@ -27,7 +27,7 @@ const (
 	gatewayPeer   = "peer0.guolong.com"
 	channelName   = "mychannel"
 	chaincodeName = "basic"
-	serverPort    = "8080"
+	serverPort    = "8081"
 )
 
 func main() {
