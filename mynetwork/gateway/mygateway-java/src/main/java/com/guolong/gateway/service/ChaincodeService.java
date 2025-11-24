@@ -97,6 +97,7 @@ public class ChaincodeService {
         }
 
         boolean hasMore = results.size() == pageSize;
+        // 这里使用了 RichPageResult 的全参构造器，与之前去 Lombok 后的 DTO 兼容
         return new RichPageResult(results, hasMore, page, skip + results.size());
     }
     

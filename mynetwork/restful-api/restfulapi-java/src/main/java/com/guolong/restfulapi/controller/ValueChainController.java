@@ -7,7 +7,7 @@ import com.guolong.gateway.utils.FileUtils;
 import com.guolong.restfulapi.dto.DeleteKeyRequest;
 import com.guolong.restfulapi.dto.PutValueRequest;
 import com.guolong.restfulapi.service.DockerMonitorService;
-import lombok.RequiredArgsConstructor;
+// 移除 lombok 导入
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/valuechain")
-@RequiredArgsConstructor
+// 移除 @RequiredArgsConstructor
 @CrossOrigin("*")
 public class ValueChainController {
 
@@ -38,6 +38,17 @@ public class ValueChainController {
     // [删除] fabricBinPath 不需要了
     @Value("${fabric.cert-path}") private String certDir;
     @Value("${fabric.key-path}") private String keyDir;
+
+    // [新增] 手动添加全参构造函数 (用于替代 @RequiredArgsConstructor)
+    public ValueChainController(ChaincodeService chaincodeService, 
+                                LedgerService ledgerService, 
+                                AdminService adminService, 
+                                DockerMonitorService dockerService) {
+        this.chaincodeService = chaincodeService;
+        this.ledgerService = ledgerService;
+        this.adminService = adminService;
+        this.dockerService = dockerService;
+    }
 
     @GetMapping("/info")
     public ResponseEntity<?> getInfo() {
@@ -98,9 +109,6 @@ public class ValueChainController {
         return ResponseEntity.ok(res);
     }
 
-    // ... 其他方法 (getBlocks, getBlockByNum, etc.) 保持不变 ...
-    // 为了节省篇幅，这里只列出受影响的 getInfo 方法，其他方法和之前给出的代码完全一致
-    
     @GetMapping("/blocks")
     public ResponseEntity<?> getBlocks(@RequestParam(defaultValue = "0") long pageNum,
                                        @RequestParam(defaultValue = "10") long pageSize) {

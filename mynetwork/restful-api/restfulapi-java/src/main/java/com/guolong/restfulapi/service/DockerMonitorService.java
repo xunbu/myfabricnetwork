@@ -6,8 +6,8 @@ import com.github.dockerjava.api.model.Statistics;
 import com.github.dockerjava.core.InvocationBuilder;
 import com.guolong.restfulapi.dto.CpuMetric;
 import com.guolong.restfulapi.dto.MemoryMetric;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,11 +18,16 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class DockerMonitorService {
 
+    private static final Logger log = LoggerFactory.getLogger(DockerMonitorService.class);
+
     private final DockerClient dockerClient;
+
+    // 手动添加构造函数替代 @RequiredArgsConstructor
+    public DockerMonitorService(DockerClient dockerClient) {
+        this.dockerClient = dockerClient;
+    }
 
     @Value("#{'${docker.containers}'.split(',')}")
     private List<String> containerNames;

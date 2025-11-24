@@ -5,7 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.guolong.gateway.utils.ShellUtils;
 import org.hyperledger.fabric.client.Gateway;
-import org.hyperledger.fabric.protos.common.*;
+import org.hyperledger.fabric.protos.common.Block;
+import org.hyperledger.fabric.protos.common.ConfigEnvelope;
+import org.hyperledger.fabric.protos.common.ConfigGroup;
+import org.hyperledger.fabric.protos.common.ConfigValue;
+import org.hyperledger.fabric.protos.common.Envelope;
+import org.hyperledger.fabric.protos.common.OrdererAddresses;
+import org.hyperledger.fabric.protos.common.Payload;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
