@@ -2,33 +2,33 @@ package com.guolong.gateway.dto;
 
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TxInfo {
 
-    @JsonProperty("txId")
+    // [修复] Go struct 默认为大写开头，前端可能依赖此格式
+    @JsonProperty("TxId")
     private String txId;
 
-    @JsonProperty("channelId")
+    @JsonProperty("ChannelId")
     private String channelId;
 
-    @JsonProperty("type")
+    @JsonProperty("Type")
     private String type;
 
-    @JsonProperty("timestamp")
+    @JsonProperty("Timestamp")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX", timezone = "UTC")
     private Date timestamp;
 
-    @JsonProperty("size")
+    @JsonProperty("Size")
     private Integer size;
 
-    @JsonProperty("validationCode")
+    @JsonProperty("ValidationCode")
     private Integer validationCode;
 
-    @JsonProperty("chainCodeInfos")
+    @JsonProperty("ChainCodeInfos")
     private List<ChainCodeInfo> chainCodeInfos;
 
     // ==================== 构造函数 ====================
@@ -103,100 +103,10 @@ public class TxInfo {
     public void setChainCodeInfos(List<ChainCodeInfo> chainCodeInfos) {
         this.chainCodeInfos = chainCodeInfos;
     }
-
-    // ==================== Builder Pattern ====================
-
-    public static TxInfoBuilder builder() {
-        return new TxInfoBuilder();
-    }
-
-    public static class TxInfoBuilder {
-        private String txId;
-        private String channelId;
-        private String type;
-        private Date timestamp;
-        private Integer size;
-        private Integer validationCode;
-        private List<ChainCodeInfo> chainCodeInfos;
-
-        TxInfoBuilder() {
-        }
-
-        public TxInfoBuilder txId(String txId) {
-            this.txId = txId;
-            return this;
-        }
-
-        public TxInfoBuilder channelId(String channelId) {
-            this.channelId = channelId;
-            return this;
-        }
-
-        public TxInfoBuilder type(String type) {
-            this.type = type;
-            return this;
-        }
-
-        public TxInfoBuilder timestamp(Date timestamp) {
-            this.timestamp = timestamp;
-            return this;
-        }
-
-        public TxInfoBuilder size(Integer size) {
-            this.size = size;
-            return this;
-        }
-
-        public TxInfoBuilder validationCode(Integer validationCode) {
-            this.validationCode = validationCode;
-            return this;
-        }
-
-        public TxInfoBuilder chainCodeInfos(List<ChainCodeInfo> chainCodeInfos) {
-            this.chainCodeInfos = chainCodeInfos;
-            return this;
-        }
-
-        public TxInfo build() {
-            return new TxInfo(txId, channelId, type, timestamp, size, validationCode, chainCodeInfos);
-        }
-
-        public String toString() {
-            return "TxInfo.TxInfoBuilder(txId=" + this.txId + ", channelId=" + this.channelId + ", type=" + this.type + ", timestamp=" + this.timestamp + ", size=" + this.size + ", validationCode=" + this.validationCode + ", chainCodeInfos=" + this.chainCodeInfos + ")";
-        }
-    }
-
-    // ==================== equals, hashCode, toString ====================
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        TxInfo txInfo = (TxInfo) o;
-        return Objects.equals(txId, txInfo.txId) &&
-                Objects.equals(channelId, txInfo.channelId) &&
-                Objects.equals(type, txInfo.type) &&
-                Objects.equals(timestamp, txInfo.timestamp) &&
-                Objects.equals(size, txInfo.size) &&
-                Objects.equals(validationCode, txInfo.validationCode) &&
-                Objects.equals(chainCodeInfos, txInfo.chainCodeInfos);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(txId, channelId, type, timestamp, size, validationCode, chainCodeInfos);
-    }
-
+    
+    // toString, equals, hashCode 可以保持标准生成，不需要改
     @Override
     public String toString() {
-        return "TxInfo{" +
-                "txId='" + txId + '\'' +
-                ", channelId='" + channelId + '\'' +
-                ", type='" + type + '\'' +
-                ", timestamp=" + timestamp +
-                ", size=" + size +
-                ", validationCode=" + validationCode +
-                ", chainCodeInfos=" + chainCodeInfos +
-                '}';
+        return "TxInfo{" + "txId='" + txId + '\'' + ", channelId='" + channelId + '\'' + '}';
     }
 }

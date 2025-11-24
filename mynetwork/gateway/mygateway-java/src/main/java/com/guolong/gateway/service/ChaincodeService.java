@@ -10,6 +10,7 @@ import org.hyperledger.fabric.client.Gateway;
 import org.hyperledger.fabric.client.Network;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -69,7 +70,7 @@ public class ChaincodeService {
     // 获取所有数据 (Rich Query)
     public List<QueryRichResult> getAllData(String channelName, String chaincodeName) throws Exception {
         Map<String, Object> query = new HashMap<>();
-        query.put("selector", new HashMap<>());
+        query.put("selector", new HashMap<>()); // 空选择器匹配所有
         String queryString = objectMapper.writeValueAsString(query);
 
         byte[] bytes = evaluateTransaction(channelName, chaincodeName, "QueryByRich", queryString);
@@ -79,14 +80,22 @@ public class ChaincodeService {
         return objectMapper.readValue(bytes, new TypeReference<List<QueryRichResult>>() {});
     }
 
-    // 分页查询
+    // 分页查询 (对应 Go 的 GetAllDataByPageWithLimit)
     public RichPageResult getAllDataByPageWithLimit(String channelName, String chaincodeName, int page, int pageSize) throws Exception {
         int skip = (page - 1) * pageSize;
+        
+        // 构建 CouchDB 查询语句
         Map<String, Object> query = new HashMap<>();
         query.put("selector", new HashMap<>());
         query.put("limit", pageSize);
         query.put("skip", skip);
-        // sort 语法略，需符合 CouchDB 规范
+        
+        // [新增] 实现 Sort 逻辑，与 Go 代码一致: "sort": [{"_id": "asc"}]
+        List<Map<String, String>> sortList = new ArrayList<>();
+        Map<String, String> sortId = new HashMap<>();
+        sortId.put("_id", "asc");
+        sortList.add(sortId);
+        query.put("sort", sortList);
         
         String queryString = objectMapper.writeValueAsString(query);
         byte[] bytes = evaluateTransaction(channelName, chaincodeName, "QueryByRich", queryString);
@@ -97,8 +106,10 @@ public class ChaincodeService {
         }
 
         boolean hasMore = results.size() == pageSize;
-        // 这里使用了 RichPageResult 的全参构造器，与之前去 Lombok 后的 DTO 兼容
-        return new RichPageResult(results, hasMore, page, skip + results.size());
+        // 近似计算 total，因为 CouchDB 在复杂查询下获取精确 total 性能开销大
+        int estimatedTotal = skip + results.size(); 
+        
+        return new RichPageResult(results, hasMore, page, estimatedTotal);
     }
     
     // 获取历史

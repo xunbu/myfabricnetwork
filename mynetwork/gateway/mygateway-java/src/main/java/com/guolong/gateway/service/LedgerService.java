@@ -1,5 +1,9 @@
 package com.guolong.gateway.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +21,7 @@ import org.hyperledger.fabric.protos.common.ConfigGroup;
 import org.hyperledger.fabric.protos.common.Envelope;
 import org.hyperledger.fabric.protos.common.HeaderType;
 import org.hyperledger.fabric.protos.common.Payload;
+import org.hyperledger.fabric.protos.common.SignatureHeader;
 import org.hyperledger.fabric.protos.peer.ChaincodeActionPayload;
 import org.hyperledger.fabric.protos.peer.ChaincodeInvocationSpec;
 import org.hyperledger.fabric.protos.peer.ChaincodeProposalPayload;
@@ -55,8 +60,6 @@ public class LedgerService {
         long height = getBlockHeight(channelName);
         long totalTx = 0;
         for (long i = 0; i < height; i++) {
-            // 为了性能，这里只获取区块头可能会更快，但 QSCC GetBlockByNumber 返回全量块
-            // 在生产环境中，通常会缓存这个总数，而不是每次遍历
             byte[] blockBytes = getQscc(channelName).evaluateTransaction("GetBlockByNumber", channelName, String.valueOf(i));
             Block block = Block.parseFrom(blockBytes);
             totalTx += block.getData().getDataCount();
@@ -106,6 +109,7 @@ public class LedgerService {
         if (endIdx >= height) endIdx = height - 1;
 
         List<BlockInfo> list = new ArrayList<>();
+        // 倒序：最新的区块在前
         for (long i = endIdx; i >= startIdx; i--) {
             list.add(getBlockByNum(channelName, i));
         }
@@ -129,17 +133,21 @@ public class LedgerService {
         txInfo.setType(HeaderType.forNumber(channelHeader.getType()).name());
         txInfo.setTimestamp(Date.from(Instant.ofEpochSecond(channelHeader.getTimestamp().getSeconds(), channelHeader.getTimestamp().getNanos())));
 
+        // 解析 ChaincodeInfos
         if (channelHeader.getType() == HeaderType.ENDORSER_TRANSACTION_VALUE) {
             Transaction tx = Transaction.parseFrom(payload.getData());
-            
             List<ChainCodeInfo> ccInfos = new ArrayList<>();
+            
             for (TransactionAction action : tx.getActionsList()) {
                 ChaincodeActionPayload cap = ChaincodeActionPayload.parseFrom(action.getPayload());
                 ChaincodeProposalPayload cpp = ChaincodeProposalPayload.parseFrom(cap.getChaincodeProposalPayload());
+                
+                // 解析 Proposal 中的 Input
                 ChaincodeInvocationSpec cis = ChaincodeInvocationSpec.parseFrom(cpp.getInput());
                 
                 ChainCodeInfo ccInfo = new ChainCodeInfo();
                 ccInfo.setChainCodeName(cis.getChaincodeSpec().getChaincodeId().getName());
+                
                 List<String> args = new ArrayList<>();
                 for (ByteString arg : cis.getChaincodeSpec().getInput().getArgsList()) {
                     args.add(arg.toStringUtf8());
@@ -154,7 +162,7 @@ public class LedgerService {
     }
 
     // ==========================================
-    // 核心解析逻辑更新
+    // 核心解析逻辑
     // ==========================================
     private BlockInfo parseBlockInfo(byte[] blockBytes, long blockNum, String channelId) throws InvalidProtocolBufferException {
         Block block = Block.parseFrom(blockBytes);
@@ -163,46 +171,135 @@ public class LedgerService {
         BlockInfo info = new BlockInfo();
         info.setBlockNumber(blockNum);
         info.setChannelId(channelId);
-        
-        // [新增] 区块大小
         info.setBlockSize((long) blockBytes.length);
         
-        // [更新] 使用 Hex 格式 (更符合区块链浏览器习惯)，如果想用 Base64 可以换回去
-        info.setBlockHash(toHex(header.getDataHash()));
+        // [修复] 计算正确的 Block Hash (ASN.1 DER encoding + SHA256)
+        String realBlockHash = calculateBlockHash(header);
+        info.setBlockHash(realBlockHash);
+        
         info.setPreviousHash(toHex(header.getPreviousHash()));
-        
-        // [新增] Merkle Root (即 DataHash)
         info.setMerkleRoot(toHex(header.getDataHash()));
-        
         info.setTxCount((long) block.getData().getDataCount());
         
-        // [新增] 解析所有交易 ID 和时间戳
         List<String> txIds = new ArrayList<>();
         if (block.getData().getDataCount() > 0) {
-            for (ByteString data : block.getData().getDataList()) {
+            for (int i = 0; i < block.getData().getDataCount(); i++) {
+                ByteString data = block.getData().getData(i);
                 try {
                     Envelope env = Envelope.parseFrom(data);
                     Payload pl = Payload.parseFrom(env.getPayload());
                     ChannelHeader ch = ChannelHeader.parseFrom(pl.getHeader().getChannelHeader());
                     
-                    // 收集 TxID
                     txIds.add(ch.getTxId());
                     
-                    // 使用第一笔交易的时间作为区块时间
+                    // 解析时间戳 (取第一笔交易)
                     if (info.getTimestamp() == null) {
                         info.setTimestamp(Date.from(Instant.ofEpochSecond(ch.getTimestamp().getSeconds(), ch.getTimestamp().getNanos())));
                     }
+                    
+                    // 解析 Creator (取第一笔交易)
+                    if (i == 0 && info.getBlockCreator() == null) {
+                        String creator = extractCreatorFromSignature(pl.getHeader().getSignatureHeader());
+                        info.setBlockCreator(creator);
+                    }
                 } catch (Exception e) {
-                    // ignore invalid tx in block parsing
+                    // ignore individual tx parse errors
                 }
             }
         }
-        info.setTxIds(txIds);
         
+        // 兜底：创世区块可能没有交易，补充时间戳
+        if (blockNum == 0 && info.getTimestamp() == null) {
+            info.setTimestamp(new Date()); 
+        }
+
+        info.setTxIds(txIds);
         return info;
     }
 
-    // 辅助方法：ByteString 转 Hex 字符串
+    // ==========================================
+    // [新增] Fabric 区块哈希算法 (ASN.1 DER Encoding)
+    // ==========================================
+    private String calculateBlockHash(BlockHeader header) {
+        try {
+            long number = header.getNumber();
+            byte[] previousHash = header.getPreviousHash().toByteArray();
+            byte[] dataHash = header.getDataHash().toByteArray();
+
+            // 1. 构造 ASN.1 整数 (Block Number)
+            byte[] numBytes = BigInteger.valueOf(number).toByteArray();
+            byte[] asn1Num = createAsn1Object(0x02, numBytes);
+
+            // 2. 构造 ASN.1 OctetString (Previous Hash)
+            byte[] asn1PrevHash = createAsn1Object(0x04, previousHash);
+
+            // 3. 构造 ASN.1 OctetString (Data Hash)
+            byte[] asn1DataHash = createAsn1Object(0x04, dataHash);
+
+            // 4. 拼接 Sequence 内容
+            ByteArrayOutputStream seqContent = new ByteArrayOutputStream();
+            seqContent.write(asn1Num);
+            seqContent.write(asn1PrevHash);
+            seqContent.write(asn1DataHash);
+
+            // 5. 构造 ASN.1 Sequence
+            byte[] asn1Seq = createAsn1Object(0x30, seqContent.toByteArray());
+
+            // 6. SHA-256 哈希
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(asn1Seq);
+
+            return toHex(ByteString.copyFrom(hash));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    // 简单的 ASN.1 DER 编码辅助方法
+    private byte[] createAsn1Object(int tag, byte[] content) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(tag);
+        writeLength(out, content.length);
+        out.write(content);
+        return out.toByteArray();
+    }
+
+    // ASN.1 长度编码
+    private void writeLength(ByteArrayOutputStream out, int length) {
+        if (length < 128) {
+            out.write(length);
+        } else {
+            // 长形式：第一个字节是 0x80 | 长度字节数
+            int byteCount = 0;
+            int temp = length;
+            while (temp > 0) {
+                temp >>= 8;
+                byteCount++;
+            }
+            out.write(0x80 | byteCount);
+            for (int i = byteCount - 1; i >= 0; i--) {
+                out.write((length >> (i * 8)) & 0xFF);
+            }
+        }
+    }
+
+    private String extractCreatorFromSignature(ByteString signatureHeaderBytes) throws InvalidProtocolBufferException {
+        if (signatureHeaderBytes == null || signatureHeaderBytes.isEmpty()) {
+            return "";
+        }
+        SignatureHeader sh = SignatureHeader.parseFrom(signatureHeaderBytes);
+        byte[] creatorBytes = sh.getCreator().toByteArray();
+        if (creatorBytes.length > 0) {
+            int len = Math.min(8, creatorBytes.length);
+            byte[] sub = new byte[len];
+            System.arraycopy(creatorBytes, 0, sub, 0, len);
+            return "Creator:" + toHex(ByteString.copyFrom(sub));
+        }
+        return "";
+    }
+
     private String toHex(ByteString byteString) {
         if (byteString == null) return "";
         byte[] bytes = byteString.toByteArray();
