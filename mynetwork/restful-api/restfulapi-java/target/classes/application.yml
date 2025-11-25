@@ -23,5 +23,10 @@ fabric:
 
 docker:
   socket: unix:///var/run/docker.sock
-  # 使用逗号分隔，避免 @Value 注入列表时的解析错误
-  containers: peer0.guolong.com,peer1.guolong.com,peer2.guolong.com,orderer.guolong.com
+  # 改为标准的 YAML 列表格式
+  containers:
+    - orderer.guolong.com
+    - peer0.guolong.com
+    - peer1.guolong.com
+    - peer2.guolong.com
+    
