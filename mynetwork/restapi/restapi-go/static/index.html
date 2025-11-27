@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区块链浏览器</title>
+    <script src="/static/js/tailwindcss.js"></script>
+    <script src="/static/js/vue.global.prod.js"></script>
+    <script src="/static/js/chart.js"></script>
+    <style>
+        .json-content.collapsed {
+            max-height: 60px;
+            overflow: hidden;
+        }
+
+        .json-expand-icon {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #666;
+            margin-right: 5px;
+            transition: transform 0.2s;
+        }
+
+        .json-expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a237e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- 主页 -->
+        <div v-show="currentPage === 'home'" class="min-h-screen flex flex-col">
+            <header class="bg-gradient-to-r from-indigo-800 to-indigo-700 text-white shadow-lg">
+                <div class="container mx-auto px-4">
+                    <div class="flex justify-between items-center py-4">
+                        <div class="flex items-center text-xl font-bold">
+                            <span class="mr-2 text-2xl">⛓️</span>
+                            <span>区块链浏览器</span>
+                        </div>
+                        <nav>
+                            <ul class="flex space-x-4">
+                                <li><a href="#" @click.prevent="navigateTo('home')"
+                                        class="px-3 py-1 rounded hover:bg-white/10 transition"
+                                        :class="{'bg-white/10': currentPage === 'home'}">首页</a></li>
+                                <li><a href="#" @click.prevent="navigateTo('nodes')"
+                                        class="px-3 py-1 rounded hover:bg-white/10 transition"
+                                        :class="{'bg-white/10': currentPage === 'nodes'}">节点监控</a></li>
+                                <li><a href="#" @click.prevent="navigateTo('data')"
+                                        class="px-3 py-1 rounded hover:bg-white/10 transition"
+                                        :class="{'bg-white/10': currentPage === 'data'}">数据展示</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </header>
+
+            <main class="container mx-auto px-4 py-6 flex-grow">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="text-sm text-gray-600">最后更新: {{ refreshStatus }}</div>
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" v-model="autoRefresh" class="mr-1"> 自动刷新 (10秒)
+                        </label>
+                        <button @click="refreshHomeData"
+                            class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition">手动刷新</button>
+                    </div>
+                </div>
+
+                <h2 class="text-xl font-bold mb-4 text-indigo-800 border-b-2 border-gray-200 pb-2">区块链概览</h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-sm text-gray-600 mb-1">区块号</div>
+                        <div class="text-2xl font-bold text-indigo-800">{{ overview.blockHeight || 0 }}</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-sm text-gray-600 mb-1">交易总数</div>
+                        <div class="text-2xl font-bold text-indigo-800">{{ overview.totalTransactionCount || 0 }}</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-sm text-gray-600 mb-1">组织数量</div>
+                        <div class="text-2xl font-bold text-indigo-800">{{ overview.orgCount || 0 }}</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-sm text-gray-600 mb-1">链码数量</div>
+                        <div class="text-2xl font-bold text-indigo-800">{{ overview.chainCodeCount || 0 }}</div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition">
+                        <div class="text-sm text-gray-600 mb-1">节点数量</div>
+                        <div class="text-2xl font-bold text-indigo-800">{{ overview.nodeCount || 0 }}</div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-indigo-800 border-b-2 border-gray-200 pb-2">最新区块</h2>
+                        <div class="flex items-center">
+                            <button @click="prevPage" :disabled="blockPage === 0"
+                                class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition mr-2 disabled:bg-gray-400 disabled:cursor-not-allowed">上一页</button>
+                            <span class="mr-2">第 {{ blockPage + 1 }} 页</span>
+                            <button @click="nextPage" :disabled="(blockPage + 1) * pageSize >= overview.blockHeight"
+                                class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed">下一页</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b-2 border-gray-200 text-left text-gray-600 font-semibold">
+                                    <th class="p-3">区块号</th>
+                                    <th class="p-3">区块哈希</th>
+                                    <th class="p-3">交易数量</th>
+                                    <th class="p-3">时间戳</th>
+                                    <th class="p-3">大小</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="block in blocks" :key="block.blockNumber"
+                                    @click="showBlockDetail(block.blockNumber)" class="cursor-pointer hover:bg-gray-50">
+                                    <td class="p-3 font-semibold text-indigo-800">{{ block.blockNumber || 0 }}</td>
+                                    <td class="p-3 font-mono text-indigo-800 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap"
+                                        :title="block.blockHash">
+                                        {{ (block.blockHash || '').substring(0, 20) }}...
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <span
+                                            class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-semibold">{{
+                                            block.txCount || 0 }}</span>
+                                    </td>
+                                    <td class="p-3 text-gray-600 text-sm">{{ formatTimestamp(block.timestamp) }}</td>
+                                    <td class="p-3">{{ formatBytes(block.blockSize || 0) }}</td>
+                                </tr>
+                                <tr v-if="blocks.length === 0">
+                                    <td colspan="5" class="text-center py-4 text-gray-500">暂无区块数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="bg-indigo-800 text-white text-center py-6 mt-auto">
+                <div class="container mx-auto">
+                    <p>区块链浏览器 &copy; 2025</p>
+                </div>
+            </footer>
+        </div>
+
+        <!-- 区块详情页面 -->
+        <div v-show="currentPage === 'blockDetail'" class="min-h-screen flex flex-col">
+            <header class="bg-gradient-to-r from-indigo-800 to-indigo-700 text-white shadow-lg">
+                <div class="container mx-auto px-4">
+                    <div class="flex justify-between items-center py-4">
+                        <div class="flex items-center text-xl font-bold">
+                            <span class="mr-2 text-2xl">⛓️</span>
+                            <span>区块详情</span>
+                        </div>
+                        <nav>
+                            <ul class="flex space-x-4">
+                                <li><a href="#" @click.prevent="navigateTo('home')"
+                                        class="px-3 py-1 rounded hover:bg-white/10 transition">返回首页</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </header>
+
+            <main class="container mx-auto px-4 py-6 flex-grow">
+                <button @click="navigateTo('home')"
+                    class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition mb-4">
+                    ← 返回区块列表
+                </button>
+
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <h2 class="text-xl font-bold mb-4 text-indigo-800 border-b-2 border-gray-200 pb-2">区块信息</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">区块号</div>
+                            <div class="text-lg font-semibold">{{ blockDetail.blockNumber || 0 }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">区块哈希</div>
+                            <div class="font-mono bg-gray-100 p-2 rounded text-sm break-all">{{ blockDetail.blockHash ||
+                                '' }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">前一个区块哈希</div>
+                            <div class="font-mono bg-gray-100 p-2 rounded text-sm break-all cursor-pointer hover:bg-gray-200 transition"
+                                @click="navigateToPreviousBlock(blockDetail.previousHash)" title="点击查看上一个区块">{{
+                                blockDetail.previousHash || '' }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">数据哈希 (Merkle根)</div>
+                            <div class="font-mono bg-gray-100 p-2 rounded text-sm break-all">{{ blockDetail.dataHash ||
+                                '' }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">交易数量</div>
+                            <div class="text-lg font-semibold">{{ blockDetail.txCount || 0 }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">区块大小</div>
+                            <div class="text-lg font-semibold">{{ formatBytes(blockDetail.blockSize || 0) }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">时间戳</div>
+                            <div class="text-lg font-semibold">{{ formatTimestamp(blockDetail.timestamp) }}</div>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <div class="text-sm text-gray-600 mb-1">通道ID</div>
+                            <div class="text-lg font-semibold">{{ blockDetail.channelId || '-' }}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="text-xl font-bold mb-4 text-indigo-800 border-b-2 border-gray-200 pb-2">交易列表</h2>
+                        <ul class="space-y-2">
+                            <li v-for="txId in blockDetail.txIds" :key="txId"
+                                class="border rounded-lg p-3 hover:bg-gray-50">
+                                <span @click="showTxDetail(txId)"
+                                    class="font-mono text-indigo-700 font-semibold cursor-pointer underline">{{ txId
+                                    }}</span>
+                            </li>
+                            <li v-if="!blockDetail.txIds || blockDetail.txIds.length === 0"
+                                class="border rounded-lg p-3 text-gray-500">此区块没有交易</li>
+                        </ul>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="bg-indigo-800 text-white text-center py-6 mt-auto">
+                <div class="container mx-auto">
+                    <p>区块链浏览器 &copy; 2025 - 基于Hyperledger Fabric</p>
+                </div>
+            </footer>
+        </div>
+
+        <!-- 节点监控页面 -->
+        <div v-show="currentPage === 'nodes'" class="min-h-screen flex flex-col">
+            <header class="bg-gradient-to-r from-indigo-800 to-indigo-700 text-white shadow-lg">
+                <div class="container mx-auto px-4">
+                    <div class="flex justify-between items-center py-4">
+                        <div class="flex items-center text-xl font-bold">
+                            <span class="mr-2 text-2xl">⛓️</span>
+                            <span>节点监控</span>
+                        </div>
+                        <nav>
+                            <ul class="flex space-x-4">
+                                <li><a href="#" @click.prevent="navigateTo('home')"
+                                        class="px-3 py-1 rounded hover:bg-white/10 transition">返回首页</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </header>
+
+            <main class="container mx-auto px-4 py-6 flex-grow">
+                <h2 class="text-xl font-bold mb-4 text-indigo-800 border-b-2 border-gray-200 pb-2">节点资源监控</h2>
+
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                        <div>
+                            <span class="mr-2">时间范围:</span>
+                            <label class="mr-2"><input type="radio" v-model="timeRange" value="1"> 1分钟</label>
+                            <label class="mr-2"><input type="radio" v-model="timeRange" value="5"> 5分钟</label>
+                            <label><input type="radio" v-model="timeRange" value="30"> 30分钟</label>
+                        </div>
+                        <div>
+                            <span class="mr-2">自动刷新:</span>
+                            <label class="mr-2"><input type="radio" v-model="refreshRate" value="5"> 5秒</label>
+                            <label class="mr-2"><input type="radio" v-model="refreshRate" value="10"> 10秒</label>
+                            <label class="mr-2"><input type="radio" v-model="refreshRate" value="30"> 30秒</label>
+                            <label><input type="radio" v-model="refreshRate" value="0"> 关闭</label>
+                        </div>
+                        <button @click="refreshNodeData"
+                            class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition">手动刷新</button>
+                    </div>
+
+                    <div class="border-b border-gray-200 mb-4">
+                        <div class="flex">
+                            <button @click="switchNodeTab('cpu')"
+                                :class="{'border-indigo-800 text-indigo-800 font-semibold': nodeTab === 'cpu'}"
+                                class="px-4 py-2 border-b-3 border-transparent cursor-pointer">CPU监控</button>
+                            <button @click="switchNodeTab('memory')"
+                                :class="{'border-indigo-800 text-indigo-800 font-semibold': nodeTab === 'memory'}"
+                                class="px-4 py-2 border-b-3 border-transparent cursor-pointer">内存监控</button>
+                        </div>
+                    </div>
+
+                    <div v-show="nodeTab === 'cpu'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div v-for="(node, name) in cpuNodes" :key="`cpu-${name}`"
+                            class="border rounded-lg p-4 hover:shadow-lg transition">
+                            <div class="font-bold text-lg text-indigo-800 mb-2">{{ name }}</div>
+                            <div class="text-3xl font-bold mb-1" :class="getCpuClass(node.latestUsage)">
+                                {{ node.latestUsage.toFixed(2) }}%
+                            </div>
+                            <div class="text-sm text-gray-600 mb-3">最新更新时间: {{ formatTimestamp(node.latestTimestamp) }}
+                            </div>
+                            <div class="h-48 relative">
+                                <canvas :id="`cpu-chart-${name}`"></canvas>
+                            </div>
+                        </div>
+                        <div v-if="Object.keys(cpuNodes).length === 0"
+                            class="text-center py-8 text-gray-500 col-span-full">
+                            <div class="text-4xl mb-2">📊</div>
+                            <p>暂无CPU监控数据</p>
+                        </div>
+                    </div>
+
+                    <div v-show="nodeTab === 'memory'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div v-for="(node, name) in memoryNodes" :key="`memory-${name}`"
+                            class="border rounded-lg p-4 hover:shadow-lg transition">
+                            <div class="font-bold text-lg text-indigo-800 mb-2">{{ name }}</div>
+                            <div class="text-3xl font-bold mb-1" :class="getMemoryClass(node.latestUsage)">
+                                {{ node.latestUsage.toFixed(2) }}%
+                            </div>
+                            <div class="text-sm text-gray-600 mb-1">已用内存: {{ formatBytes(node.usedMemory) }} / {{
+                                formatBytes(node.totalMemory) }}</div>
+                            <div class="text-sm text-gray-600 mb-3">最新更新时间: {{ formatTimestamp(node.latestTimestamp) }}
+                            </div>
+                            <div class="h-48 relative">
+                                <canvas :id="`memory-chart-${name}`"></canvas>
+                            </div>
+                        </div>
+                        <div v-if="Object.keys(memoryNodes).length === 0"
+                            class="text-center py-8 text-gray-500 col-span-full">
+                            <div class="text-4xl mb-2">💾</div>
+                            <p>暂无内存监控数据</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="bg-indigo-800 text-white text-center py-6 mt-auto">
+                <div class="container mx-auto">
+                    <p>区块链浏览器 &copy; 2025</p>
+                </div>
+            </footer>
+        </div>
+
+        <!-- 数据展示页面 -->
+        <div v-show="currentPage === 'data'" class="min-h-screen flex flex-col">
+            <header class="bg-gradient-to-r from-indigo-800 to-indigo-700 text-white shadow-lg">
+                <div class="container mx-auto px-4">
+                    <div class="flex justify-between items-center py-4">
+                        <div class="flex items-center text-xl font-bold">
+                            <span class="mr-2 text-2xl">⛓️</span>
+                            <span>链上数据</span>
+                        </div>
+                        <nav>
+                            <ul class="flex space-x-4">
+                                <li><a href="#" @click.prevent="navigateTo('home')"
+                                        class="px-3 py-1 rounded hover:bg-white/10 transition">返回首页</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </header>
+
+            <main class="container mx-auto px-4 py-6 flex-grow">
+                <h2 class="text-xl font-bold mb-4 text-indigo-800 border-b-2 border-gray-200 pb-2">链上数据展示</h2>
+
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                        <div class="flex items-center">
+                            <input v-model="searchTerm" @keyup.enter="filterChainData" type="text"
+                                placeholder="搜索键或值..." class="border rounded px-3 py-1 mr-2 w-64">
+                            <button @click="filterChainData"
+                                class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition">搜索</button>
+                        </div>
+                        <div>
+                            <button @click="showAddDataModal"
+                                class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition mr-2">添加新数据</button>
+                            <button @click="loadChainData"
+                                class="bg-indigo-700 text-white px-3 py-1 rounded hover:bg-indigo-600 transition">刷新数据</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b-2 border-gray-200 text-left text-gray-600 font-semibold bg-gray-50">
+                                    <th class="p-3">键</th>
+                                    <th class="p-3">值</th>
+                                    <th class="p-3">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(item, index) in filteredData" :key="item.key">
+                                    <td class="p-3 font-mono text-indigo-800 font-semibold max-w-xs break-all"
+                                        :title="item.key">{{ item.key }}</td>
+                                    <td class="p-3 max-w-md break-all">
+                                        <div v-if="item.isJson">
+                                            <div class="flex justify-between items-center mb-1">
+                                                <button @click="toggleJsonDisplay(index)"
+                                                    class="text-indigo-800 text-sm">
+                                                    <span class="json-expand-icon"
+                                                        :class="{'expanded': !item.collapsed}"></span>JSON
+                                                </button>
+                                                <span
+                                                    class="bg-green-500 text-white text-xs px-2 py-1 rounded">JSON</span>
+                                            </div>
+                                            <div class="bg-gray-100 p-2 rounded text-sm whitespace-pre-wrap max-h-48 overflow-y-auto"
+                                                :class="{'collapsed': item.collapsed}">{{ item.formattedValue }}</div>
+                                        </div>
+                                        <span v-else :title="item.value">{{ truncateText(item.value, 100) }}</span>
+                                    </td>
+                                    <td class="p-3">
+                                        <button @click="showKeyHistory(item.key)"
+                                            class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-semibold mr-1">历史记录</button>
+                                        <button @click="deleteKey(item.key)"
+                                            class="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">删除</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="filteredData.length === 0">
+                                    <td colspan="3" class="text-center py-8 text-gray-500">
+                                        <div class="text-4xl mb-2">📝</div>
+                                        <p>暂无链上数据</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="bg-indigo-800 text-white text-center py-6 mt-auto">
+                <div class="container mx-auto">
+                    <p>区块链浏览器 &copy; 2025</p>
+                </div>
+            </footer>
+        </div>
+
+        <!-- 密钥历史记录模态框 -->
+        <div v-show="showHistoryModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
+                <div class="flex justify-between items-center border-b pb-2 mb-4">
+                    <h2>密钥历史记录</h2>
+                    <button @click="showHistoryModal = false" class="text-2xl text-gray-600">&times;</button>
+                </div>
+                <div class="mb-4">
+                    <h3 class="break-all">密钥 "{{ historyKey }}" 的历史记录</h3>
+                    <div v-if="historyLoading" class="loading mx-auto my-4"></div>
+                    <div v-if="historyError" class="bg-red-100 text-red-700 p-3 mb-4 border-l-4 border-red-500">{{
+                        historyError }}</div>
+                    <table v-if="!historyLoading && !historyError" class="w-full">
+                        <thead>
+                            <tr class="border-b text-left text-gray-600 font-semibold bg-gray-50">
+                                <th class="p-2">交易ID</th>
+                                <th class="p-2">时间戳</th>
+                                <th class="p-2">值</th>
+                                <th class="p-2">是否删除</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="item in historyData" :key="item.txId">
+                                <td class="p-2">
+                                    <span @click="showTxDetail(item.txId)"
+                                        class="font-mono text-indigo-700 font-semibold cursor-pointer underline">
+                                        {{ item.txId.substring(0, 15) }}...
+                                    </span>
+                                </td>
+                                <td class="p-2">{{ formatTimestamp(item.timestamp) }}</td>
+                                <td class="p-2">
+                                    <span v-if="item.isDelete"><i>已删除</i></span>
+                                    <pre v-else-if="item.isJson"
+                                        class="bg-gray-100 p-2 rounded text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">{{ item.formattedValue }}</pre>
+                                    <span v-else>{{ item.value }}</span>
+                                </td>
+                                <td class="p-2">{{ item.isDelete ? '是' : '否' }}</td>
+                            </tr>
+                            <tr v-if="historyData.length === 0">
+                                <td colspan="4" class="text-center py-4 text-gray-500">未找到此密钥的历史记录。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 交易详情模态框 -->
+        <div v-show="showTxModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-screen overflow-y-auto">
+                <div class="flex justify-between items-center border-b pb-2 mb-4">
+                    <h2>交易详情</h2>
+                    <button @click="showTxModal = false" class="text-2xl text-gray-600">&times;</button>
+                </div>
+                <div>
+                    <div v-if="txLoading" class="loading mx-auto my-4"></div>
+                    <div v-if="txError" class="bg-red-100 text-red-700 p-3 mb-4 border-l-4 border-red-500">{{ txError }}
+                    </div>
+                    <div v-if="!txLoading && !txError && txDetail">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><span class="font-semibold text-gray-600">交易ID:</span> <span class="font-mono">{{
+                                    txDetail.TxId }}</span></div>
+                            <div><span class="font-semibold text-gray-600">通道ID:</span> <span class="font-mono">{{
+                                    txDetail.ChannelId }}</span></div>
+                            <div><span class="font-semibold text-gray-600">类型:</span> <span>{{ txDetail.Type }}</span>
+                            </div>
+                            <div><span class="font-semibold text-gray-600">时间戳:</span> <span>{{
+                                    formatTimestamp(txDetail.Timestamp) }}</span></div>
+                            <div><span class="font-semibold text-gray-600">大小:</span> <span>{{
+                                    formatBytes(txDetail.Size) }}</span></div>
+                            <div><span class="font-semibold text-gray-600">验证码:</span> <span>{{ txDetail.ValidationCode
+                                    }}</span></div>
+                        </div>
+                        <h4 class="font-bold mt-6 mb-2 border-b pb-2">链码调用</h4>
+                        <div v-if="txDetail.ChainCodeInfos && txDetail.ChainCodeInfos.length > 0">
+                            <div v-for="cc in txDetail.ChainCodeInfos" :key="cc.ChainCodeName"
+                                class="border rounded-lg p-3 mt-3">
+                                <strong>链码:</strong> {{ cc.ChainCodeName }}<br>
+                                <strong>参数:</strong>
+                                <ul class="ml-5 list-decimal">
+                                    <li v-for="arg in cc.Args" :key="arg"
+                                        class="font-mono text-sm whitespace-pre-wrap break-all">{{ arg }}</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div v-else>无链码调用信息。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加/更新数据模态框 -->
+        <div v-show="showAddModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-2xl">
+                <div class="flex justify-between items-center border-b pb-2 mb-4">
+                    <h2>添加新数据</h2>
+                    <button @click="showAddModal = false" class="text-2xl text-gray-600">&times;</button>
+                </div>
+                <div>
+                    <form @submit.prevent="submitData">
+                        <div v-if="addError" class="bg-red-100 text-red-700 p-3 mb-4 border-l-4 border-red-500">{{
+                            addError }}</div>
+                        <div class="mb-4">
+                            <label for="put-key" class="block mb-1 font-semibold">键 (Key)</label>
+                            <input v-model="newKey" type="text" id="put-key" required
+                                class="w-full border rounded px-3 py-2">
+                        </div>
+                        <div class="mb-4">
+                            <label for="put-value" class="block mb-1 font-semibold">值 (Value)</label>
+                            <textarea v-model="newValue" id="put-value" required
+                                class="w-full border rounded px-3 py-2 min-h-32"></textarea>
+                        </div>
+                        <div class="text-right">
+                            <button type="submit" :disabled="addSubmitting"
+                                class="bg-indigo-700 text-white px-4 py-2 rounded hover:bg-indigo-600 transition disabled:bg-gray-400">
+                                <span v-if="!addSubmitting">提交</span>
+                                <span v-else class="loading align-middle ml-2"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                // 页面状态
+                const currentPage = ref('home');
+                const blockPage = ref(0);
+                const pageSize = ref(10);
+                const nodeTab = ref('cpu');
+                const searchTerm = ref('');
+                const refreshStatus = ref('--');
+                const autoRefresh = ref(true);
+                const refreshRate = ref('5');
+                const timeRange = ref('1');
+
+                // 数据状态
+                const overview = reactive({});
+                const blocks = ref([]);
+                const blockDetail = reactive({});
+                const cpuNodes = reactive({});
+                const memoryNodes = reactive({});
+                const chainData = ref([]);
+                const filteredData = ref([]);
+
+                // 模态框状态
+                const showHistoryModal = ref(false);
+                const showTxModal = ref(false);
+                const showAddModal = ref(false);
+                const historyKey = ref('');
+                const historyData = ref([]);
+                const historyLoading = ref(false);
+                const historyError = ref('');
+                const txDetail = ref(null);
+                const txLoading = ref(false);
+                const txError = ref('');
+                const newKey = ref('');
+                const newValue = ref('');
+                const addError = ref('');
+                const addSubmitting = ref(false);
+
+                // 图表实例存储
+                const cpuCharts = ref({});
+                const memoryCharts = ref({});
+
+                // 定时器
+                let homeRefreshTimer = null;
+                let nodeRefreshTimer = null;
+
+                // 计算属性
+                const allChainData = computed(() => chainData.value.map(item => {
+                    const isJson = typeof item.value === 'string' && (item.value.trim().startsWith('{') || item.value.trim().startsWith('['));
+                    let formattedValue = item.value;
+                    if (isJson) {
+                        try {
+                            formattedValue = JSON.stringify(JSON.parse(item.value), null, 2);
+                        } catch (e) { }
+                    }
+                    return { ...item, isJson, formattedValue, collapsed: true };
+                }));
+
+                // 监听器
+                watch(autoRefresh, (val) => {
+                    if (val) {
+                        startHomeRefresh();
+                    } else {
+                        stopHomeRefresh();
+                    }
+                });
+
+                watch(refreshRate, () => {
+                    if (currentPage.value === 'nodes') {
+                        startNodeRefresh();
+                    }
+                });
+
+                watch(timeRange, () => {
+                    if (currentPage.value === 'nodes') {
+                        refreshNodeData();
+                    }
+                });
+
+                // 方法
+                const navigateTo = (page) => {
+                    currentPage.value = page;
+                    if (page === 'home') {
+                        blockPage.value = 0;
+                        refreshHomeData();
+                    } else if (page === 'nodes') {
+                        // 确保切换到节点监控页面时能正确加载数据
+                        nextTick(() => {
+                            refreshNodeData();
+                            startNodeRefresh();
+                        });
+                    } else if (page === 'data') {
+                        loadChainData();
+                    }
+                };
+
+                const refreshHomeData = async () => {
+                    await Promise.all([loadOverviewData(), loadBlocks()]);
+                    updateRefreshStatus();
+                };
+
+                const updateRefreshStatus = () => {
+                    refreshStatus.value = new Date().toLocaleTimeString('zh-CN');
+                };
+
+                const loadOverviewData = async () => {
+                    try {
+                        const response = await fetch('/valuechain/info');
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        const data = await response.json();
+                        Object.assign(overview, data);
+                    } catch (error) {
+                        console.error('加载概览数据失败:', error);
+                    }
+                };
+
+                const loadBlocks = async () => {
+                    try {
+                        const response = await fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize.value}`);
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        blocks.value = await response.json();
+                    } catch (error) {
+                        console.error('加载区块列表失败:', error);
+                        blocks.value = [];
+                    }
+                };
+
+                const prevPage = () => {
+                    if (blockPage.value > 0) {
+                        blockPage.value--;
+                        loadBlocks();
+                    }
+                };
+
+                const nextPage = () => {
+                    if ((blockPage.value + 1) * pageSize.value < overview.blockHeight) {
+                        blockPage.value++;
+                        loadBlocks();
+                    }
+                };
+
+                const showBlockDetail = async (blockNum) => {
+                    try {
+                        const response = await fetch(`/valuechain/block?blockNum=${blockNum}`);
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        Object.assign(blockDetail, await response.json());
+                        currentPage.value = 'blockDetail';
+                    } catch (error) {
+                        console.error('加载区块详情失败:', error);
+                    }
+                };
+
+                const navigateToPreviousBlock = async (previousHash) => {
+                    if (!previousHash || previousHash === '' || previousHash === '0000000000000000000000000000000000000000000000000000000000000000') {
+                        alert('这是创世区块，没有前一个区块');
+                        return;
+                    }
+
+                    // 根据当前区块号推算前一个区块号
+                    const currentBlockNum = blockDetail.blockNumber || 0;
+                    if (currentBlockNum > 0) {
+                        await showBlockDetail(currentBlockNum - 1);
+                    } else {
+                        alert('无法获取前一个区块');
+                    }
+                };
+
+                const refreshNodeData = async () => {
+                    if (nodeTab.value === 'cpu') {
+                        await loadCPUData();
+                        await nextTick();
+                        setTimeout(() => createCPUCharts(), 100);
+                    } else {
+                        await loadMemoryData();
+                        await nextTick();
+                        setTimeout(() => createMemoryCharts(), 100);
+                    }
+                };
+
+                const switchNodeTab = async (tab) => {
+                    nodeTab.value = tab;
+                    await refreshNodeData();
+                };
+
+                const loadCPUData = async () => {
+                    try {
+                        const response = await fetch('/valuechain/cpuHistory');
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        const data = await response.json();
+
+                        const now = Date.now();
+                        const startTime = now - (timeRange.value * 60 * 1000);
+
+                        // 销毁旧图表
+                        Object.keys(cpuCharts.value).forEach(key => {
+                            if (cpuCharts.value[key]) {
+                                cpuCharts.value[key].destroy();
+                                delete cpuCharts.value[key];
+                            }
+                        });
+
+                        // 清理旧数据
+                        Object.keys(cpuNodes).forEach(key => delete cpuNodes[key]);
+
+                        Object.keys(data).forEach(nodeName => {
+                            const nodeData = data[nodeName] || [];
+                            const filteredData = nodeData.filter(d => new Date(d.Timestamp).getTime() >= startTime);
+                            const latestData = nodeData[nodeData.length - 1] || {};
+
+                            cpuNodes[nodeName] = {
+                                data: filteredData,
+                                latestUsage: latestData.CPUUsage || 0,
+                                latestTimestamp: latestData.Timestamp
+                            };
+                        });
+
+                        console.log('CPU数据加载完成', cpuNodes);
+                    } catch (error) {
+                        console.error('加载CPU数据失败:', error);
+                        Object.keys(cpuNodes).forEach(key => delete cpuNodes[key]);
+                    }
+                };
+
+                const loadMemoryData = async () => {
+                    try {
+                        const response = await fetch('/valuechain/memoryHistory');
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        const data = await response.json();
+
+                        const now = Date.now();
+                        const startTime = now - (timeRange.value * 60 * 1000);
+
+                        // 销毁旧图表
+                        Object.keys(memoryCharts.value).forEach(key => {
+                            if (memoryCharts.value[key]) {
+                                memoryCharts.value[key].destroy();
+                                delete memoryCharts.value[key];
+                            }
+                        });
+
+                        // 清理旧数据
+                        Object.keys(memoryNodes).forEach(key => delete memoryNodes[key]);
+
+                        Object.keys(data).forEach(nodeName => {
+                            const nodeData = data[nodeName] || [];
+                            const filteredData = nodeData.filter(d => new Date(d.Timestamp).getTime() >= startTime);
+                            const latestData = nodeData[nodeData.length - 1] || {};
+                            const usedMemory = latestData.UsedMemory || 0;
+                            const totalMemory = latestData.TotalMemory || 1;
+
+                            memoryNodes[nodeName] = {
+                                data: filteredData,
+                                latestUsage: (usedMemory / totalMemory) * 100,
+                                usedMemory,
+                                totalMemory,
+                                latestTimestamp: latestData.Timestamp
+                            };
+                        });
+
+                        console.log('内存数据加载完成', memoryNodes);
+                    } catch (error) {
+                        console.error('加载内存数据失败:', error);
+                        Object.keys(memoryNodes).forEach(key => delete memoryNodes[key]);
+                    }
+                };
+
+                // 计算图表的Y轴范围
+                const calculateYAxisRange = (dataPoints) => {
+                    if (!dataPoints || dataPoints.length === 0) {
+                        return { min: 0, max: 10, stepSize: 2 };
+                    }
+
+                    const maxValue = Math.max(...dataPoints);
+                    const minValue = Math.min(...dataPoints);
+
+                    // 确保最小值不超过最大值的80%
+                    let min = Math.max(0, minValue * 0.8);
+
+                    // 确保最大值至少是最大值的1.1倍，但不小于10%
+                    let max = Math.max(maxValue * 1.1, 10);
+
+                    // 计算合适的步长，确保至少有5个刻度，且步长不小于2%
+                    let stepSize = Math.max((max - min) / 5, 2);
+
+                    // 调整步长为整数或常见的2、5、10的倍数
+                    if (stepSize < 2) {
+                        stepSize = 2;
+                    } else if (stepSize < 5) {
+                        stepSize = Math.ceil(stepSize);
+                    } else if (stepSize < 10) {
+                        stepSize = Math.ceil(stepSize / 5) * 5;
+                    } else {
+                        stepSize = Math.ceil(stepSize / 10) * 10;
+                    }
+
+                    // 调整最小值和最大值以适应步长
+                    min = Math.floor(min / stepSize) * stepSize;
+                    max = Math.ceil(max / stepSize) * stepSize;
+
+                    // 确保最小值不小于0，最大值不大于100
+                    min = Math.max(0, min);
+                    max = Math.min(100, max);
+
+                    return { min, max, stepSize };
+                };
+
+                const createCPUCharts = () => {
+                    Object.keys(cpuNodes).forEach(nodeName => {
+                        const canvas = document.getElementById(`cpu-chart-${nodeName}`);
+                        if (!canvas) {
+                            console.warn(`Canvas not found: cpu-chart-${nodeName}`);
+                            return;
+                        }
+
+                        const ctx = canvas.getContext('2d');
+                        const nodeData = cpuNodes[nodeName];
+                        const labels = nodeData.data.map(d => new Date(d.Timestamp).toLocaleTimeString('zh-CN'));
+                        const dataPoints = nodeData.data.map(d => d.CPUUsage || 0);
+
+                        console.log(`Creating CPU chart for ${nodeName}`, { labels, dataPoints });
+
+                        // 计算Y轴范围
+                        const yAxisRange = calculateYAxisRange(dataPoints);
+
+                        cpuCharts.value[nodeName] = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels,
+                                datasets: [{
+                                    label: 'CPU使用率 (%)',
+                                    data: dataPoints,
+                                    borderColor: '#1a237e',
+                                    backgroundColor: 'rgba(26, 35, 126, 0.1)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointRadius: dataPoints.length < 50 ? 3 : 0
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        min: yAxisRange.min,
+                                        max: yAxisRange.max,
+                                        ticks: {
+                                            callback: v => v.toFixed(0) + '%',
+                                            stepSize: yAxisRange.stepSize
+                                        }
+                                    },
+                                    x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                                },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    });
+                };
+
+                const createMemoryCharts = () => {
+                    Object.keys(memoryNodes).forEach(nodeName => {
+                        const canvas = document.getElementById(`memory-chart-${nodeName}`);
+                        if (!canvas) {
+                            console.warn(`Canvas not found: memory-chart-${nodeName}`);
+                            return;
+                        }
+
+                        const ctx = canvas.getContext('2d');
+                        const nodeData = memoryNodes[nodeName];
+                        const labels = nodeData.data.map(d => new Date(d.Timestamp).toLocaleTimeString('zh-CN'));
+                        const dataPoints = nodeData.data.map(d => {
+                            const used = d.UsedMemory || 0;
+                            const total = d.TotalMemory || 1;
+                            return (used / total) * 100;
+                        });
+
+                        console.log(`Creating Memory chart for ${nodeName}`, { labels, dataPoints });
+
+                        // 计算Y轴范围
+                        const yAxisRange = calculateYAxisRange(dataPoints);
+
+                        memoryCharts.value[nodeName] = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels,
+                                datasets: [{
+                                    label: '内存使用率 (%)',
+                                    data: dataPoints,
+                                    borderColor: '#d81b60',
+                                    backgroundColor: 'rgba(216, 27, 96, 0.1)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointRadius: dataPoints.length < 50 ? 3 : 0
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        min: yAxisRange.min,
+                                        max: yAxisRange.max,
+                                        ticks: {
+                                            callback: v => v.toFixed(0) + '%',
+                                            stepSize: yAxisRange.stepSize
+                                        }
+                                    },
+                                    x: { ticks: { maxRotation: 45, minRotation: 45 } }
+                                },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    });
+                };
+
+                const loadChainData = async () => {
+                    try {
+                        const response = await fetch('/valuechain/data/all');
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        chainData.value = await response.json();
+                        filterChainData();
+                    } catch (error) {
+                        console.error('加载链上数据失败:', error);
+                        chainData.value = [];
+                    }
+                };
+
+                const filterChainData = () => {
+                    if (!searchTerm.value) {
+                        filteredData.value = allChainData.value;
+                    } else {
+                        const term = searchTerm.value.toLowerCase();
+                        filteredData.value = allChainData.value.filter(item => {
+                            const key = (item.key || '').toLowerCase();
+                            const value = String(item.value || '').toLowerCase();
+                            return key.includes(term) || value.includes(term);
+                        });
+                    }
+                };
+
+                const toggleJsonDisplay = (index) => {
+                    filteredData.value[index].collapsed = !filteredData.value[index].collapsed;
+                };
+
+                const showAddDataModal = () => {
+                    newKey.value = '';
+                    newValue.value = '';
+                    addError.value = '';
+                    showAddModal.value = true;
+                };
+
+                const submitData = async () => {
+                    addSubmitting.value = true;
+                    addError.value = '';
+
+                    try {
+                        const response = await fetch('/valuechain/data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key: newKey.value, value: newValue.value })
+                        });
+
+                        if (!response.ok) {
+                            const errData = await response.json();
+                            throw new Error(errData.error || `保存数据失败，状态码: ${response.status}`);
+                        }
+
+                        showAddModal.value = false;
+                        await loadChainData();
+                    } catch (error) {
+                        console.error('写入值时出错:', error);
+                        addError.value = error.message;
+                    } finally {
+                        addSubmitting.value = false;
+                    }
+                };
+
+                const deleteKey = async (key) => {
+                    if (!confirm(`您确定要删除密钥 "${key}" 吗？此操作无法撤销。`)) return;
+
+                    try {
+                        const response = await fetch('/valuechain/data/delete', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key })
+                        });
+
+                        if (!response.ok) {
+                            const errData = await response.json();
+                            throw new Error(errData.error || `删除密钥失败，状态码: ${response.status}`);
+                        }
+
+                        await loadChainData();
+                    } catch (error) {
+                        console.error('删除密钥时出错:', error);
+                        alert(error.message);
+                    }
+                };
+
+                const showKeyHistory = async (key) => {
+                    historyKey.value = key;
+                    historyData.value = [];
+                    historyLoading.value = true;
+                    historyError.value = '';
+                    showHistoryModal.value = true;
+
+                    try {
+                        const response = await fetch(`/valuechain/data/history?key=${encodeURIComponent(key)}`);
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        const data = await response.json();
+
+                        historyData.value = data.map(item => {
+                            const isJson = !item.isDelete && typeof item.value === 'string' && (item.value.trim().startsWith('{') || item.value.trim().startsWith('['));
+                            let formattedValue = item.value;
+                            if (isJson) {
+                                try {
+                                    formattedValue = JSON.stringify(JSON.parse(item.value), null, 2);
+                                } catch (e) { }
+                            }
+                            return { ...item, isJson, formattedValue };
+                        });
+                    } catch (error) {
+                        console.error('加载密钥历史记录失败:', error);
+                        historyError.value = '加载密钥历史记录失败。';
+                    } finally {
+                        historyLoading.value = false;
+                    }
+                };
+
+                const showTxDetail = async (txId) => {
+                    txDetail.value = null;
+                    txLoading.value = true;
+                    txError.value = '';
+                    showTxModal.value = true;
+
+                    try {
+                        const response = await fetch(`/valuechain/transaction?txID=${encodeURIComponent(txId)}`);
+                        if (!response.ok) throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                        txDetail.value = await response.json();
+                    } catch (error) {
+                        console.error('加载交易详情失败:', error);
+                        txError.value = '加载交易详情失败。';
+                    } finally {
+                        txLoading.value = false;
+                    }
+                };
+
+                // 工具函数
+                const formatTimestamp = (timestamp) => {
+                    return timestamp ? new Date(timestamp).toLocaleString('zh-CN') : '-';
+                };
+
+                const formatBytes = (bytes) => {
+                    if (!bytes || bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
+
+                const truncateText = (text, maxLength) => {
+                    if (typeof text !== 'string' || text.length <= maxLength) return text;
+                    return text.substring(0, maxLength) + '...';
+                };
+
+                const getCpuClass = (usage) => {
+                    if (usage > 80) return 'text-red-600';
+                    if (usage > 50) return 'text-orange-600';
+                    return 'text-green-600';
+                };
+
+                const getMemoryClass = (usage) => {
+                    if (usage > 90) return 'text-red-600';
+                    if (usage > 70) return 'text-orange-600';
+                    return 'text-green-600';
+                };
+
+                // 定时器管理
+                const startHomeRefresh = () => {
+                    stopHomeRefresh();
+                    if (autoRefresh.value) {
+                        homeRefreshTimer = setInterval(() => {
+                            if (currentPage.value === 'home') {
+                                refreshHomeData();
+                            }
+                        }, 10000);
+                    }
+                };
+
+                const stopHomeRefresh = () => {
+                    if (homeRefreshTimer) {
+                        clearInterval(homeRefreshTimer);
+                        homeRefreshTimer = null;
+                    }
+                };
+
+                const startNodeRefresh = () => {
+                    stopNodeRefresh();
+                    const rate = parseInt(refreshRate.value);
+                    if (rate > 0) {
+                        nodeRefreshTimer = setInterval(() => {
+                            if (currentPage.value === 'nodes') {
+                                refreshNodeData();
+                            }
+                        }, rate * 1000);
+                    }
+                };
+
+                const stopNodeRefresh = () => {
+                    if (nodeRefreshTimer) {
+                        clearInterval(nodeRefreshTimer);
+                        nodeRefreshTimer = null;
+                    }
+                };
+
+                // 生命周期
+                onMounted(() => {
+                    refreshHomeData();
+                    startHomeRefresh();
+                });
+
+                onUnmounted(() => {
+                    stopHomeRefresh();
+                    stopNodeRefresh();
+                    // 销毁所有图表
+                    Object.keys(cpuCharts.value).forEach(key => {
+                        if (cpuCharts.value[key]) {
+                            cpuCharts.value[key].destroy();
+                        }
+                    });
+                    Object.keys(memoryCharts.value).forEach(key => {
+                        if (memoryCharts.value[key]) {
+                            memoryCharts.value[key].destroy();
+                        }
+                    });
+                });
+
+                return {
+                    // 状态
+                    currentPage,
+                    blockPage,
+                    pageSize,
+                    nodeTab,
+                    searchTerm,
+                    refreshStatus,
+                    autoRefresh,
+                    refreshRate,
+                    timeRange,
+                    overview,
+                    blocks,
+                    blockDetail,
+                    cpuNodes,
+                    memoryNodes,
+                    filteredData,
+                    showHistoryModal,
+                    showTxModal,
+                    showAddModal,
+                    historyKey,
+                    historyData,
+                    historyLoading,
+                    historyError,
+                    txDetail,
+                    txLoading,
+                    txError,
+                    newKey,
+                    newValue,
+                    addError,
+                    addSubmitting,
+
+                    // 方法
+                    navigateTo,
+                    refreshHomeData,
+                    prevPage,
+                    nextPage,
+                    showBlockDetail,
+                    navigateToPreviousBlock,
+                    refreshNodeData,
+                    switchNodeTab,
+                    loadChainData,
+                    filterChainData,
+                    toggleJsonDisplay,
+                    showAddDataModal,
+                    submitData,
+                    deleteKey,
+                    showKeyHistory,
+                    showTxDetail,
+                    formatTimestamp,
+                    formatBytes,
+                    truncateText,
+                    getCpuClass,
+                    getMemoryClass
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
