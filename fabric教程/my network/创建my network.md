@@ -44,19 +44,15 @@ export DOCKER_SOCK=/var/run/docker.sock
 docker-compose -f compose/compose-test-net.yaml -f compose/docker/docker-compose-test-net.yaml -f compose/compose-couch.yaml -f compose/docker/docker-compose-couch.yaml down -v
 ```
 
-## 设置orderer管理员环境变量
-
-```bash
-export ORDERER_CA=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/msp/tlscacerts/tlsca.guolong.com-cert.pem
-export ORDERER_ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.crt
-export ORDERER_ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.key
-```
-
-## 生成通道mychannel
+## 生成通道mychannel与orderer加入通道
 
 ```bash
 #生成应用通道创世块
 configtxgen -profile ChannelUsingRaft -outputBlock ./channel-artifacts/mychannel.block -channelID mychannel
+# 设置orderer管理员环境变量
+export ORDERER_CA=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/msp/tlscacerts/tlsca.guolong.com-cert.pem
+export ORDERER_ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.crt
+export ORDERER_ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.key
 #orderer加入通道
 osnadmin channel join --channelID mychannel --config-block ./channel-artifacts/mychannel.block -o localhost:7053 --ca-file "$ORDERER_CA" --client-cert "$ORDERER_ADMIN_TLS_SIGN_CERT" --client-key "$ORDERER_ADMIN_TLS_PRIVATE_KEY"
 ```

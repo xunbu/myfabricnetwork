@@ -168,7 +168,7 @@ func PutMap(gw *client.Gateway, channelName string, chaincodeName string, key st
 }
 
 // 写入map
-func PutKvs(gw *client.Gateway, channelName string, chaincodeName string, KVMap map[string]string) ([]byte, error) {
+func PutKVs(gw *client.Gateway, channelName string, chaincodeName string, KVMap map[string]string) ([]byte, error) {
 	v, err := json.Marshal(KVMap)
 	if err != nil {
 		return nil, err

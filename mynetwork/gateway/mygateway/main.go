@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"guolong.com/fabric-gateway/gateway"
@@ -31,38 +30,39 @@ func main() {
 
 	defer gw.Close()
 	channelName := "mychannel"
-	gateway.GetTransactionCount(gw, channelName)
-	m := map[string]any{
-		"first name":  "tom",
-		"second name": "hanks",
-	}
-	m2 := map[string]any{
-		"first name":  "tom",
-		"second name": "Janks",
-	}
-	// gateway.PutMap(gw, channelName, "basic", "test", m)
-	// gateway.PutMap(gw, channelName, "basic", "test", m2)
-	// gateway.PutMap(gw, channelName, "basic", "test2", m2)
-
-	v := make(map[string]string)
-	t, err := json.Marshal(m)
-	if err != nil {
-		panic(err)
-	}
-	t2, err := json.Marshal(m2)
-	if err != nil {
-		panic(err)
-	}
-	v["test3"] = string(t)
-	v["test4"] = string(t2)
-	fmt.Println(v)
-	gateway.PutKvs(gw, channelName, channelName, v)
-	// gateway.PutString(gw, channelName, "author", "xunbu")
-	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKey", "test")
-	// if err != nil {
-	// 	fmt.Printf("error in EvaluateTransaction %v", err)
+	// v2, _ := gateway.GetTransactionCount(gw, channelName)
+	// fmt.Println(v2)
+	// m := map[string]any{
+	// 	"first name":  "tom",
+	// 	"second name": "hanks",
 	// }
-	// fmt.Printf("value:%s\n", v)
+	// m2 := map[string]any{
+	// 	"first name":  "tom",
+	// 	"second name": "Janks",
+	// }
+	// // gateway.PutMap(gw, channelName, "basic", "test", m)
+	// // gateway.PutMap(gw, channelName, "basic", "test", m2)
+	// // gateway.PutMap(gw, channelName, "basic", "test2", m2)
+
+	// v := make(map[string]string)
+	// t, err := json.Marshal(m)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// t2, err := json.Marshal(m2)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// v["test3"] = string(t)
+	// v["test4"] = string(t2)
+	// fmt.Println(v)
+	// gateway.PutKVs(gw, channelName, channelName, v)
+	gateway.PutValue(gw, channelName, "basic", "author", "xunbu")
+	v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKey", "author")
+	if err != nil {
+		fmt.Printf("error in EvaluateTransaction %v", err)
+	}
+	fmt.Printf("value:%s\n", v)
 	// v, _ := gateway.GetTxByID(gw, channelName, "287d49979e733fc0c528b58804ef3f1a29fe1bb47a530b949915e4efdea022d9")
 	// fmt.Println(v)
 
