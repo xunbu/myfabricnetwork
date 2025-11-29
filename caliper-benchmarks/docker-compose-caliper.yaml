@@ -1,0 +1,20 @@
+version: '2'  # Docker Compose 文件版本
+
+services:
+    caliper:
+        container_name: caliper  # 容器名称
+        image: hyperledger/caliper:0.7.1  # 使用的 Caliper 镜像版本
+        command: launch manager  # 启动命令，运行基准测试管理器
+        environment:
+        - CALIPER_BIND_SUT=fabric:fabric-gateway  # 绑定的区块链平台（Fabric + Gateway SDK）
+        - CALIPER_BENCHCONFIG=benchmarks/scenario/my-test/config.yaml  # 基准测试配置文件路径
+        - CALIPER_NETWORKCONFIG=networks/fabric/test-network.yaml  # 网络配置文件路径
+        volumes:
+        # 将本地的 caliper-benchmarks 目录挂载到容器工作空间
+        - .:/hyperledger/caliper/workspace
+        - ~/fabric/mynetwork/organizations:/hyperledger/caliper/workspace/organizations  # 证书目录
+
+networks:
+  default:
+    external:
+      name: fabric_test 

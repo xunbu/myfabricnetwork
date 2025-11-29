@@ -1,0 +1,25 @@
+test:
+  name: my-chaincode-test
+  description: Benchmarking PutValue and QueryByKey
+  workers:
+    number: 1  # 先用1个客户端，容易排错
+  rounds:
+    - label: write-phase
+      description: Test PutValue performance
+      txNumber: 20  # 测试 20 笔交易
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 10
+      workload:
+        module: benchmarks/scenario/my-test/write.js
+
+    - label: read-phase
+      description: Test QueryByKey performance
+      txNumber: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 20
+      workload:
+        module: benchmarks/scenario/my-test/read.js

@@ -1,0 +1,29 @@
+name: Caliper Benchmarks
+version: "2.0.0"
+
+caliper:
+  blockchain: fabric
+
+info:
+  StateDB: CouchDB
+
+channels:
+  # channelName of mychannel matches the name of the channel created by test network
+  - channelName: mychannel
+    # the chaincodeIDs of all the fabric chaincodes in caliper-benchmarks
+    contracts:
+    - id: basic
+
+organizations:
+  - mspid: Org1MSP
+    # Identities come from cryptogen created material for test-network
+    identities:
+      certificates:
+      - name: 'User1'
+        clientPrivateKey:
+          path: 'organizations/peerOrganizations/guolong.com/users/User1@guolong.com/msp/keystore/priv_sk'
+        clientSignedCert:
+          path: 'organizations/peerOrganizations/guolong.com/users/User1@guolong.com/msp/signcerts/User1@guolong.com-cert.pem'
+    connectionProfile:
+      path: 'organizations/peerOrganizations/guolong.com/connection-org1.yaml'
+      discover: true
