@@ -1,0 +1,59 @@
+---
+name: test-network-org1
+version: 1.0.0
+client:
+  organization: Org1
+  connection:
+    timeout:
+      peer:
+        endorser: '300'
+organizations:
+  Org1:
+    mspid: Org1MSP
+    peers:
+    - peer0.guolong.com
+    - peer1.guolong.com
+    - peer2.guolong.com
+    certificateAuthorities:
+    - ca.guolong.com
+
+peers:
+  peer0.guolong.com:
+    url: grpcs://peer0.guolong.com:7051
+    tlsCACerts:
+      pem: |
+          ${PEERPEM}
+    grpcOptions:
+      ssl-target-name-override: peer0.guolong.com
+      hostnameOverride: peer0.guolong.com
+      
+  peer1.guolong.com:
+    url: grpcs://peer1.guolong.com:8051
+    tlsCACerts:
+      pem: |
+          ${PEERPEM}
+    grpcOptions:
+      ssl-target-name-override: peer1.guolong.com
+      hostnameOverride: peer1.guolong.com
+
+  peer2.guolong.com:
+    url: grpcs://peer2.guolong.com:9051
+    tlsCACerts:
+      pem: |
+          ${PEERPEM}
+    grpcOptions:
+      ssl-target-name-override: peer2.guolong.com
+      hostnameOverride: peer2.guolong.com
+
+certificateAuthorities:
+  ca.guolong.com:
+    # 注意：如果在你的Docker中没有运行CA容器，这个URL无法访问，
+    # 但由于你已经生成了证书，Caliper运行基准测试时通常不需要连接CA进行注册。
+    url: https://ca.guolong.com:7054
+    caName: ca-org1
+    tlsCACerts:
+      pem: 
+        - |
+          ${CAPEM}
+    httpOptions:
+      verify: false

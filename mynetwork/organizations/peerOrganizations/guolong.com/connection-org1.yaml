@@ -1,0 +1,119 @@
+---
+name: test-network-org1
+version: 1.0.0
+client:
+  organization: Org1
+  connection:
+    timeout:
+      peer:
+        endorser: '300'
+organizations:
+  Org1:
+    mspid: Org1MSP
+    peers:
+    - peer0.guolong.com
+    - peer1.guolong.com
+    - peer2.guolong.com
+    certificateAuthorities:
+    - ca.guolong.com
+
+peers:
+  peer0.guolong.com:
+    url: grpcs://peer0.guolong.com:7051
+    tlsCACerts:
+      pem: |
+          -----BEGIN CERTIFICATE-----
+          MIICRDCCAemgAwIBAgIQZuJt3uqNmBzvWcW2i3mABjAKBggqhkjOPQQDAjBsMQsw
+          CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy
+          YW5jaXNjbzEUMBIGA1UEChMLZ3VvbG9uZy5jb20xGjAYBgNVBAMTEXRsc2NhLmd1
+          b2xvbmcuY29tMB4XDTI1MDkxMzA3MzMwMFoXDTM1MDkxMTA3MzMwMFowbDELMAkG
+          A1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFu
+          Y2lzY28xFDASBgNVBAoTC2d1b2xvbmcuY29tMRowGAYDVQQDExF0bHNjYS5ndW9s
+          b25nLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYkK/3cODjnABt63C/V
+          ErpJBCIb/YOH/rDliwcUXSqxA+MT8K1I6gob7KlvOs4u8ZN8F31by37fEThAjYhu
+          LcujbTBrMA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYB
+          BQUHAwEwDwYDVR0TAQH/BAUwAwEB/zApBgNVHQ4EIgQgwjRN/9HAWZoDOgEncjtm
+          Mp6Wq/Ecwc190HzCY6Aywu8wCgYIKoZIzj0EAwIDSQAwRgIhAIDyn1jMdkkypIn9
+          Ok+mAecXr6OKLLfleN3ZsihqlSTWAiEA9b/MXgXJU6TuXYMMTCiPkQy36yeN4bEF
+          76aIMe6KD6I=
+          -----END CERTIFICATE-----
+          
+    grpcOptions:
+      ssl-target-name-override: peer0.guolong.com
+      hostnameOverride: peer0.guolong.com
+      
+  peer1.guolong.com:
+    url: grpcs://peer1.guolong.com:8051
+    tlsCACerts:
+      pem: |
+          -----BEGIN CERTIFICATE-----
+          MIICRDCCAemgAwIBAgIQZuJt3uqNmBzvWcW2i3mABjAKBggqhkjOPQQDAjBsMQsw
+          CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy
+          YW5jaXNjbzEUMBIGA1UEChMLZ3VvbG9uZy5jb20xGjAYBgNVBAMTEXRsc2NhLmd1
+          b2xvbmcuY29tMB4XDTI1MDkxMzA3MzMwMFoXDTM1MDkxMTA3MzMwMFowbDELMAkG
+          A1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFu
+          Y2lzY28xFDASBgNVBAoTC2d1b2xvbmcuY29tMRowGAYDVQQDExF0bHNjYS5ndW9s
+          b25nLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYkK/3cODjnABt63C/V
+          ErpJBCIb/YOH/rDliwcUXSqxA+MT8K1I6gob7KlvOs4u8ZN8F31by37fEThAjYhu
+          LcujbTBrMA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYB
+          BQUHAwEwDwYDVR0TAQH/BAUwAwEB/zApBgNVHQ4EIgQgwjRN/9HAWZoDOgEncjtm
+          Mp6Wq/Ecwc190HzCY6Aywu8wCgYIKoZIzj0EAwIDSQAwRgIhAIDyn1jMdkkypIn9
+          Ok+mAecXr6OKLLfleN3ZsihqlSTWAiEA9b/MXgXJU6TuXYMMTCiPkQy36yeN4bEF
+          76aIMe6KD6I=
+          -----END CERTIFICATE-----
+          
+    grpcOptions:
+      ssl-target-name-override: peer1.guolong.com
+      hostnameOverride: peer1.guolong.com
+
+  peer2.guolong.com:
+    url: grpcs://peer2.guolong.com:9051
+    tlsCACerts:
+      pem: |
+          -----BEGIN CERTIFICATE-----
+          MIICRDCCAemgAwIBAgIQZuJt3uqNmBzvWcW2i3mABjAKBggqhkjOPQQDAjBsMQsw
+          CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy
+          YW5jaXNjbzEUMBIGA1UEChMLZ3VvbG9uZy5jb20xGjAYBgNVBAMTEXRsc2NhLmd1
+          b2xvbmcuY29tMB4XDTI1MDkxMzA3MzMwMFoXDTM1MDkxMTA3MzMwMFowbDELMAkG
+          A1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFu
+          Y2lzY28xFDASBgNVBAoTC2d1b2xvbmcuY29tMRowGAYDVQQDExF0bHNjYS5ndW9s
+          b25nLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYkK/3cODjnABt63C/V
+          ErpJBCIb/YOH/rDliwcUXSqxA+MT8K1I6gob7KlvOs4u8ZN8F31by37fEThAjYhu
+          LcujbTBrMA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYB
+          BQUHAwEwDwYDVR0TAQH/BAUwAwEB/zApBgNVHQ4EIgQgwjRN/9HAWZoDOgEncjtm
+          Mp6Wq/Ecwc190HzCY6Aywu8wCgYIKoZIzj0EAwIDSQAwRgIhAIDyn1jMdkkypIn9
+          Ok+mAecXr6OKLLfleN3ZsihqlSTWAiEA9b/MXgXJU6TuXYMMTCiPkQy36yeN4bEF
+          76aIMe6KD6I=
+          -----END CERTIFICATE-----
+          
+    grpcOptions:
+      ssl-target-name-override: peer2.guolong.com
+      hostnameOverride: peer2.guolong.com
+
+certificateAuthorities:
+  ca.guolong.com:
+    # 注意：如果在你的Docker中没有运行CA容器，这个URL无法访问，
+    # 但由于你已经生成了证书，Caliper运行基准测试时通常不需要连接CA进行注册。
+    url: https://ca.guolong.com:7054
+    caName: ca-org1
+    tlsCACerts:
+      pem: 
+        - |
+          -----BEGIN CERTIFICATE-----
+          MIICPjCCAeSgAwIBAgIRAKkZqIeH/bbTaurfn41DK+IwCgYIKoZIzj0EAwIwaTEL
+          MAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBG
+          cmFuY2lzY28xFDASBgNVBAoTC2d1b2xvbmcuY29tMRcwFQYDVQQDEw5jYS5ndW9s
+          b25nLmNvbTAeFw0yNTA5MTMwNzMzMDBaFw0zNTA5MTEwNzMzMDBaMGkxCzAJBgNV
+          BAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1TYW4gRnJhbmNp
+          c2NvMRQwEgYDVQQKEwtndW9sb25nLmNvbTEXMBUGA1UEAxMOY2EuZ3VvbG9uZy5j
+          b20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAT55FburAvnshoqi1jQgbyEDYjU
+          AgABgsgxhHUI3LkytB1MWzngAqRp+UvZDWG2cDpHdshJEFllnr5xlEGCo4Szo20w
+          azAOBgNVHQ8BAf8EBAMCAaYwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMB
+          MA8GA1UdEwEB/wQFMAMBAf8wKQYDVR0OBCIEIKTyeyA5BleRZrda5Y3AbTo17kSZ
+          ulGzbS3tcZNL1WT7MAoGCCqGSM49BAMCA0gAMEUCIQD+3M/swQtNGOXpkHiR+/PD
+          zL4MA+qEDT2kuqhhujzZVgIgCOp6O+9j3jLRz9nOiwigJs7zP+yBupOdP33u9xYX
+          MrA=
+          -----END CERTIFICATE-----
+          
+    httpOptions:
+      verify: false
