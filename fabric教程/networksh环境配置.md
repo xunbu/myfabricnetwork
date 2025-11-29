@@ -35,9 +35,9 @@
 7. `CORE_PEER_CHAINCODEADDRESS`改为`peer1.org1.example.com:8052`
 8. `CORE_PEER_CHAINCODELISTENADDRESS`改为`0.0.0.0:8052`
 9. `CORE_PEER_GOSSIP_EXTERNALENDPOINT`改为`peer1.org1.example.com:8051`
-10. `CORE_PEER_OPERATIONS_LISTENADDRESS`改为`peer1.org1.example.com:10051`
+10. `CORE_PEER_OPERATIONS_LISTENADDRESS`改为`peer1.org1.example.com:9445`
 11. `volumes`：将所有路径中的 `peer0.org1.example.com` 修改为 `peer1.org1.example.com`。
-12. `ports`：修改端口映射，将 `7051:7051` 修改为 `8051:8051`，将 `9444:9444` 修改为 `10051:10051`
+12. `ports`：修改端口映射，将 `7051:7051` 修改为 `8051:8051`，将 `9444:9444` 修改为 `9445:9445`
 
 ### 编辑 `compose/docker/docker-compose-test-net.yaml` 配置文件
 

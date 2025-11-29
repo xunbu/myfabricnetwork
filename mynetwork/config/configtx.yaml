@@ -38,6 +38,7 @@ Organizations:
         Rule: "OR('OrdererMSP.admin')"
     OrdererEndpoints:
       - orderer.guolong.com:7050
+      # - orderer2.guolong.com:7050
   - &Org1
     # DefaultOrg defines the organization which is used in the sampleconfig
     # of the fabric.git development environment
@@ -161,6 +162,7 @@ Orderer: &OrdererDefaults
   # to include the OrdererEndpoints item in your org definition
   Addresses:
     - orderer.guolong.com:7050
+    # - orderer1.guolong.com:7050
   # Batch Timeout: The amount of time to wait before creating a batch
   BatchTimeout: 2s
   # Batch Size: Controls the number of messages batched into a block
@@ -245,6 +247,10 @@ Profiles:
             Port: 7050
             ClientTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.crt
             ServerTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.crt
+          # - Host: orderer1.guolong.com
+          #   Port: 7050
+          #   ClientTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer1.guolong.com/tls/server.crt
+          #   ServerTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer1.guolong.com/tls/server.crt
       Organizations:
         - *OrdererOrg
       Capabilities: *OrdererCapabilities

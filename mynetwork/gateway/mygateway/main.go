@@ -57,12 +57,12 @@ func main() {
 	// v["test4"] = string(t2)
 	// fmt.Println(v)
 	// gateway.PutKVs(gw, channelName, channelName, v)
-	gateway.PutValue(gw, channelName, "basic", "author", "xunbu")
-	v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKey", "author")
-	if err != nil {
-		fmt.Printf("error in EvaluateTransaction %v", err)
-	}
-	fmt.Printf("value:%s\n", v)
+	// gateway.PutValue(gw, channelName, "basic", "author", "xunbu")
+	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKey", "author")
+	// if err != nil {
+	// 	fmt.Printf("error in EvaluateTransaction %v", err)
+	// }
+	// fmt.Printf("value:%s\n", v)
 	// v, _ := gateway.GetTxByID(gw, channelName, "287d49979e733fc0c528b58804ef3f1a29fe1bb47a530b949915e4efdea022d9")
 	// fmt.Println(v)
 
@@ -97,10 +97,11 @@ func main() {
 	// 	panic(err)
 	// }
 	// fmt.Println(v)
-	// v, err := gateway.GetAllStates(gw, channelName)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	v, err := gateway.GetAllData(gw, channelName, "basic")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(v)
 
 	// v2, err := json.Marshal(v)
 	// if err != nil {
