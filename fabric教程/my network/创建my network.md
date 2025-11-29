@@ -40,6 +40,7 @@ sudo chmod a+rw /var/run/docker.sock
 ```bash
 export DOCKER_SOCK=/var/run/docker.sock
 # -v选项清除用以持久化的卷，下次再启动时是一个全新的网络
+# 不带-v能持久化数据，暂时停止现在的网络
 docker-compose -f compose/compose-test-net.yaml -f compose/docker/docker-compose-test-net.yaml -f compose/compose-couch.yaml -f compose/docker/docker-compose-couch.yaml down -v
 ```
 
