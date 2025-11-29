@@ -247,10 +247,10 @@ Profiles:
             Port: 7050
             ClientTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.crt
             ServerTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.crt
-          # - Host: orderer1.guolong.com
+          # - Host: orderer2.guolong.com
           #   Port: 7050
-          #   ClientTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer1.guolong.com/tls/server.crt
-          #   ServerTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer1.guolong.com/tls/server.crt
+          #   ClientTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer2.guolong.com/tls/server.crt
+          #   ServerTLSCert: ../organizations/ordererOrganizations/guolong.com/orderers/orderer2.guolong.com/tls/server.crt
       Organizations:
         - *OrdererOrg
       Capabilities: *OrdererCapabilities
