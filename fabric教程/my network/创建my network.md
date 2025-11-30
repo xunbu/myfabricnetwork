@@ -55,6 +55,13 @@ export ORDERER_ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/guo
 export ORDERER_ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer.guolong.com/tls/server.key
 #orderer加入通道
 osnadmin channel join --channelID mychannel --config-block ./channel-artifacts/mychannel.block -o localhost:7053 --ca-file "$ORDERER_CA" --client-cert "$ORDERER_ADMIN_TLS_SIGN_CERT" --client-key "$ORDERER_ADMIN_TLS_PRIVATE_KEY"
+
+# # 设置orderer2管理员环境变量
+# export ORDERER_CA=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer2.guolong.com/msp/tlscacerts/tlsca.guolong.com-cert.pem
+# export ORDERER_ADMIN_TLS_SIGN_CERT=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer2.guolong.com/tls/server.crt
+# export ORDERER_ADMIN_TLS_PRIVATE_KEY=${PWD}/organizations/ordererOrganizations/guolong.com/orderers/orderer2.guolong.com/tls/server.key
+# #orderer2加入通道
+# osnadmin channel join --channelID mychannel --config-block ./channel-artifacts/mychannel.block -o localhost:8053 --ca-file "$ORDERER_CA" --client-cert "$ORDERER_ADMIN_TLS_SIGN_CERT" --client-key "$ORDERER_ADMIN_TLS_PRIVATE_KEY"
 ```
 
 ## 查看orderer上的通道
@@ -92,6 +99,7 @@ peer channel join -b ./channel-artifacts/mychannel.block
 ## 将peer0设为锚节点
 
 ```bash
+# 记得使用orderer1的环境变量
 # 使用 peer channel fetch 命令拉取最新的通道配置区块
 peer channel fetch config channel-artifacts/config_block.pb -o localhost:7050 --ordererTLSHostnameOverride orderer.guolong.com -c mychannel --tls --cafile "$ORDERER_CA"
 # 切换到channel-artifacts
