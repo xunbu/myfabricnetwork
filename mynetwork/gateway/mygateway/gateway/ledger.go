@@ -60,22 +60,58 @@ func GetBlockHeight(gw *client.Gateway, channelName string) (uint64, error) {
 
 // GetOrganizationCount 通过 CSCC 查询组织数
 func GetOrganizationCount(gw *client.Gateway, channelName string) (int, error) {
+	// 复用EvaluateTransaction获取配置区块
 	configBlockBytes, err := EvaluateTransaction(gw, channelName, "cscc", "GetConfigBlock", channelName)
 	if err != nil {
 		return 0, fmt.Errorf("获取配置区块失败: %w", err)
 	}
+
 	var configBlock common.Block
 	if err := proto.Unmarshal(configBlockBytes, &configBlock); err != nil {
 		return 0, fmt.Errorf("解析配置区块失败: %w", err)
 	}
-	// ... (保持原有的解析逻辑，为了节省篇幅这里简略，请直接复制原有逻辑) ...
-	// 这里你需要把原来 GetOrganizationCount 内部完整的 Envelope 解析逻辑放进来
+
 	if len(configBlock.Data.Data) == 0 {
-		return 0, fmt.Errorf("配置区块为空")
+		return 0, fmt.Errorf("配置区块数据为空")
 	}
-	// ... (完整解析代码) ...
-	// 假设你使用之前代码中的完整解析逻辑
-	return 0, nil // 占位，请填入完整逻辑
+
+	var envelope common.Envelope
+	if err := proto.Unmarshal(configBlock.Data.Data[0], &envelope); err != nil {
+		return 0, fmt.Errorf("解析区块Envelope失败: %w", err)
+	}
+
+	var payload common.Payload
+	if err := proto.Unmarshal(envelope.Payload, &payload); err != nil {
+		return 0, fmt.Errorf("解析Payload失败: %w", err)
+	}
+
+	var configEnvelope common.ConfigEnvelope
+	if err := proto.Unmarshal(payload.Data, &configEnvelope); err != nil {
+		return 0, fmt.Errorf("解析ConfigEnvelope失败: %w", err)
+	}
+
+	channelGroup := configEnvelope.Config.ChannelGroup
+	if channelGroup == nil {
+		return 0, fmt.Errorf("配置中缺少ChannelGroup")
+	}
+
+	var orgsGroup *common.ConfigGroup
+	if appGroup, exists := channelGroup.Groups["Application"]; exists {
+		orgsGroup = appGroup
+	} else if consortiumGroup, exists := channelGroup.Groups["Consortiums"]; exists {
+		for _, consortium := range consortiumGroup.Groups {
+			orgsGroup = consortium
+			break
+		}
+	} else {
+		return 0, fmt.Errorf("无法确定通道类型，缺少Application或Consortiums配置")
+	}
+
+	if orgsGroup == nil {
+		return 0, fmt.Errorf("配置中缺少组织信息")
+	}
+
+	return len(orgsGroup.Groups), nil
 }
 
 // GetBlockListByPage 分页查询区块列表
