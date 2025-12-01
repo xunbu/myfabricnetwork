@@ -7,6 +7,8 @@
     <title>Hyperledger Fabric 区块链浏览器</title>
     <script src="/static/js/tailwindcss.js"></script>
     <script src="/static/js/vue.global.prod.js"></script>
+    <!-- 新增 Vue Router -->
+    <script src="/static/js/vue-router.global.prod.js"></script>
     <script src="/static/js/chart.js"></script>
     <script>
         tailwind.config = {
@@ -107,139 +109,274 @@
         <!-- 顶部导航 -->
         <header class="bg-white/80 backdrop-blur-md border-b border-theme-border sticky top-0 z-50">
             <div class="container mx-auto px-6 h-16 flex justify-between items-center">
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-3 cursor-pointer" @click="$router.push('/')">
                     <div class="text-3xl text-theme-primary">⛓️</div>
                     <div>
-                        <h1 class="text-xl font-bold text-slate-800">FABRIC 区块链浏览器</h1>
+                        <h1 class="text-xl font-bold text-slate-800">区块链浏览器</h1>
                         <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">企业级监控平台</div>
                     </div>
                 </div>
+
+                <!-- 路由导航菜单 -->
                 <nav class="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-lg">
-                    <a href="#" @click.prevent="navigateTo('home')"
-                        class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                        :class="currentPage === 'home' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">首页概览</a>
-                    <a href="#" @click.prevent="navigateTo('nodes')"
-                        class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                        :class="currentPage === 'nodes' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">节点监控</a>
-                    <a href="#" @click.prevent="navigateTo('data')"
-                        class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                        :class="currentPage === 'data' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">链上数据</a>
+                    <router-link to="/" custom v-slot="{ navigate, isActive }">
+                        <a href="#" @click="navigate" class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
+                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
+                            首页概览
+                        </a>
+                    </router-link>
+
+                    <router-link to="/nodes" custom v-slot="{ navigate, isActive }">
+                        <a href="#" @click="navigate" class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
+                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
+                            节点监控
+                        </a>
+                    </router-link>
+
+                    <router-link to="/data" custom v-slot="{ navigate, isActive }">
+                        <a href="#" @click="navigate" class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
+                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
+                            链上数据
+                        </a>
+                    </router-link>
                 </nav>
+
                 <div class="flex items-center space-x-4">
                     <div class="text-right hidden lg:block">
                         <div class="text-xs font-mono text-slate-600">{{ refreshStatus }}</div>
-                        <div class="text-[10px] text-theme-success font-bold flex items-center justify-end gap-1"><span
-                                class="w-1.5 h-1.5 rounded-full bg-theme-success animate-pulse"></span> 运行中</div>
+                        <div class="text-[10px] text-theme-success font-bold flex items-center justify-end gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-theme-success animate-pulse"></span> 运行中
+                        </div>
                     </div>
-                    <button @click="refreshCurrentPage"
-                        class="p-2 text-slate-500 hover:text-theme-primary hover:bg-blue-50 rounded-full transition">↻</button>
+                    <button @click="triggerGlobalRefresh"
+                        class="p-2 text-slate-500 hover:text-theme-primary hover:bg-blue-50 rounded-full transition"
+                        title="刷新当前页">
+                        ↻
+                    </button>
                 </div>
             </div>
         </header>
 
-        <!-- 主内容 -->
+        <!-- 路由出口：页面将在这里渲染 -->
         <main class="flex-grow container mx-auto px-4 py-8 space-y-8">
+            <router-view v-slot="{ Component }">
+                <keep-alive :include="['NodesPage']"> <!-- 仅缓存节点页以保持图表连贯性，其他页面正常销毁重建 -->
+                    <component :is="Component" ref="viewComponent" />
+                </keep-alive>
+            </router-view>
+        </main>
 
-            <!-- HOME 页面 -->
-            <div v-show="currentPage === 'home'" class="space-y-8">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div v-for="(item, key) in overviewItems" :key="key"
-                        class="card-panel rounded-xl p-5 relative overflow-hidden group">
-                        <div
-                            class="absolute right-4 top-4 p-2 bg-slate-50 rounded-lg text-2xl text-slate-400 group-hover:text-theme-primary group-hover:scale-110 transition">
-                            {{ item.icon }}</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{{ item.label }}
-                        </div>
-                        <div class="text-3xl font-mono font-bold text-slate-800">{{ formatNumber(overview[item.key]) }}
-                        </div>
+    </div>
+
+    <!-- ================= 模版定义区 (Templates) ================= -->
+
+    <!-- 1. 首页模版 -->
+    <template id="tpl-home">
+        <div class="space-y-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div v-for="(item, key) in overviewItems" :key="key"
+                    class="card-panel rounded-xl p-5 relative overflow-hidden group">
+                    <div
+                        class="absolute right-4 top-4 p-2 bg-slate-50 rounded-lg text-2xl text-slate-400 group-hover:text-theme-primary group-hover:scale-110 transition">
+                        {{ item.icon }}
+                    </div>
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{{ item.label }}</div>
+                    <div class="text-3xl font-mono font-bold text-slate-800">{{ formatNumber(overview[item.key]) }}
                     </div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
-                        <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
-                                class="w-1 h-5 bg-theme-primary rounded-full"></span> 交易趋势 (最近50块)</h3>
-                        <div class="flex-grow relative w-full"><canvas id="txChart"></canvas></div>
-                    </div>
-                    <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
-                        <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
-                                class="w-1 h-5 bg-theme-accent rounded-full"></span> 出块分布 (最近50块)</h3>
-                        <div class="flex-grow relative w-full"><canvas id="blockChart"></canvas></div>
-                    </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
+                            class="w-1 h-5 bg-theme-primary rounded-full"></span> 交易趋势 (最近50块)</h3>
+                    <div class="flex-grow relative w-full"><canvas id="txChart"></canvas></div>
                 </div>
-                <!-- 实时区块流 -->
-                <div class="card-panel rounded-xl p-0 overflow-hidden border-t-4 border-t-theme-primary">
-                    <div class="bg-slate-50 px-6 py-3 border-b border-theme-border flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">⛓️ 实时区块流</h3>
-                    </div>
-                    <div class="overflow-x-auto custom-scrollbar p-8 bg-slate-50/50">
-                        <div class="flex items-center space-x-8 min-w-max px-4">
-                            <div v-for="block in trendBlocks" :key="block.blockNumber"
-                                class="chain-item relative group cursor-pointer"
-                                @click="showBlockDetail(block.blockNumber)">
-                                <div class="chain-link relative">
+                <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
+                            class="w-1 h-5 bg-theme-accent rounded-full"></span> 出块分布 (最近50块)</h3>
+                    <div class="flex-grow relative w-full"><canvas id="blockChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card-panel rounded-xl p-0 overflow-hidden border-t-4 border-t-theme-primary">
+                <div class="bg-slate-50 px-6 py-3 border-b border-theme-border flex justify-between items-center">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">⛓️ 实时区块流</h3>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar p-8 bg-slate-50/50">
+                    <div class="flex items-center space-x-8 min-w-max px-4">
+                        <div v-for="block in trendBlocks" :key="block.blockNumber"
+                            class="chain-item relative group cursor-pointer" @click="goToBlock(block.blockNumber)">
+                            <div class="chain-link relative">
+                                <div
+                                    class="w-44 h-52 bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-theme-primary hover:-translate-y-1 transition-all z-10 relative">
+                                    <div class="flex justify-between items-start">
+                                        <span class="text-2xl font-bold font-mono text-slate-800">#{{ block.blockNumber
+                                            }}</span>
+                                        <span
+                                            class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded-full">{{
+                                            block.txCount }} 笔</span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div class="text-[10px] text-slate-400 font-bold uppercase">哈希 (Hash)</div>
+                                        <div class="text-[10px] font-mono text-slate-600 break-all leading-tight">{{
+                                            block.blockHash.substring(0, 16) }}...</div>
+                                    </div>
                                     <div
-                                        class="w-44 h-52 bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-theme-primary hover:-translate-y-1 transition-all z-10 relative">
-                                        <div class="flex justify-between items-start">
-                                            <span class="text-2xl font-bold font-mono text-slate-800">#{{
-                                                block.blockNumber }}</span>
-                                            <span
-                                                class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded-full">{{
-                                                block.txCount }} 笔</span>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <div class="text-[10px] text-slate-400 font-bold uppercase">哈希 (Hash)</div>
-                                            <div class="text-[10px] font-mono text-slate-600 break-all leading-tight">{{
-                                                block.blockHash.substring(0, 16) }}...</div>
-                                        </div>
-                                        <div
-                                            class="pt-3 border-t border-slate-100 text-[10px] text-slate-400 font-mono flex justify-between">
-                                            <span>{{ formatTimestamp(block.timestamp).split(' ')[1] }}</span>
-                                            <span>{{ formatBytes(block.blockSize) }}</span>
-                                        </div>
+                                        class="pt-3 border-t border-slate-100 text-[10px] text-slate-400 font-mono flex justify-between">
+                                        <span>{{ formatTimestamp(block.timestamp).split(' ')[1] }}</span>
+                                        <span>{{ formatBytes(block.blockSize) }}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 区块列表 -->
-                <div class="card-panel rounded-xl p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="font-bold text-slate-800 text-lg">区块账本记录</h2>
-                        <div class="flex items-center space-x-2 text-sm">
-                            <button @click="prevPage" :disabled="blockPage === 0"
-                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50">上一页</button>
-                            <span class="font-mono text-theme-primary font-bold">
-                                第 {{ blockPage + 1 }} 页 / 共 {{ Math.ceil((overview.blockHeight || 0) / pageSize) }} 页
-                            </span>
-                            <button @click="nextPage" :disabled="(blockPage + 1) * pageSize >= overview.blockHeight"
-                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50">下一页</button>
+            <div class="card-panel rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="font-bold text-slate-800 text-lg">区块账本记录</h2>
+                    <div class="flex items-center space-x-2 text-sm">
+                        <button @click="prevPage" :disabled="blockPage === 0"
+                            class="btn-ghost px-3 py-1 rounded disabled:opacity-50">上一页</button>
+                        <span class="font-mono text-theme-primary font-bold">第 {{ blockPage + 1 }} 页</span>
+                        <button @click="nextPage" :disabled="(blockPage + 1) * pageSize >= overview.blockHeight"
+                            class="btn-ghost px-3 py-1 rounded disabled:opacity-50">下一页</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-theme-border">
+                            <tr>
+                                <th class="p-4">区块号</th>
+                                <th class="p-4">哈希值</th>
+                                <th class="p-4 text-center">交易数</th>
+                                <th class="p-4">生成时间</th>
+                                <th class="p-4 text-right">大小</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr v-for="block in blocks" :key="block.blockNumber" @click="goToBlock(block.blockNumber)"
+                                class="table-row-hover cursor-pointer transition text-slate-700">
+                                <td class="p-4 font-bold text-theme-primary font-mono">#{{ block.blockNumber }}</td>
+                                <td class="p-4 font-mono text-xs text-slate-500">{{ block.blockHash.substring(0, 32)
+                                    }}...</td>
+                                <td class="p-4 text-center"><span
+                                        class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-600">{{
+                                        block.txCount }}</span></td>
+                                <td class="p-4 font-mono text-xs">{{ formatTimestamp(block.timestamp) }}</td>
+                                <td class="p-4 text-right font-mono text-xs">{{ formatBytes(block.blockSize) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 2. 区块详情模版 -->
+    <template id="tpl-block-detail">
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <button @click="$router.push('/')"
+                    class="btn-ghost px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold">
+                    <span>←</span> 返回首页
+                </button>
+                <h2 class="text-xl font-bold text-slate-800">区块详情 <span class="text-theme-primary font-mono">#{{
+                        blockDetail.blockNumber }}</span></h2>
+            </div>
+
+            <div v-if="loading" class="text-center py-20">
+                <div
+                    class="animate-spin w-10 h-10 border-4 border-theme-primary border-t-transparent rounded-full mx-auto">
+                </div>
+            </div>
+
+            <div v-else class="card-panel rounded-xl p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div class="space-y-4">
+                        <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">区块哈希 (Block Hash)</div>
+                            <div class="font-mono text-sm text-slate-700 break-all select-all">{{ blockDetail.blockHash
+                                }}</div>
+                        </div>
+                        <div v-if="blockDetail.dataHash" class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">数据哈希 (Data Hash)</div>
+                            <div class="font-mono text-sm text-slate-700 break-all select-all">{{ blockDetail.dataHash
+                                }}</div>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-theme-primary transition cursor-pointer"
+                            @click="goToBlock(blockDetail.blockNumber - 1)" v-if="blockDetail.blockNumber > 0">
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">前块哈希 (Previous Hash)</div>
+                            <div class="font-mono text-sm text-theme-primary break-all">{{ blockDetail.previousHash }}
+                            </div>
                         </div>
                     </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-blue-50/50 rounded-lg border border-blue-100">
+                            <div class="text-xs font-bold text-slate-400 uppercase">交易数量</div>
+                            <div class="text-2xl font-bold text-theme-primary font-mono">{{ blockDetail.txCount }}</div>
+                        </div>
+                        <div class="p-4 bg-purple-50/50 rounded-lg border border-purple-100">
+                            <div class="text-xs font-bold text-slate-400 uppercase">区块大小</div>
+                            <div class="text-2xl font-bold text-theme-accent font-mono">{{
+                                formatBytes(blockDetail.blockSize) }}</div>
+                        </div>
+                        <div class="col-span-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <div class="text-xs font-bold text-slate-400 uppercase">生成时间</div>
+                            <div class="text-lg font-bold text-slate-700 font-mono">{{
+                                formatTimestamp(blockDetail.timestamp) }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-800 text-lg">包含的交易 (Transactions)</h3>
+                        <div class="flex items-center space-x-2 text-sm" v-if="blockTxTotal > 0">
+                            <button @click="prevBlockTxPage" :disabled="blockTxPage === 0"
+                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50 text-xs">上一页</button>
+                            <span class="font-mono text-theme-primary font-bold text-xs">{{ blockTxPage + 1 }} / {{
+                                Math.ceil(blockTxTotal / blockTxPageSize) }}</span>
+                            <button @click="nextBlockTxPage"
+                                :disabled="(blockTxPage + 1) * blockTxPageSize >= blockTxTotal"
+                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50 text-xs">下一页</button>
+                        </div>
+                    </div>
+
                     <div class="overflow-x-auto border rounded-lg">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-theme-border">
                                 <tr>
-                                    <th class="p-4">区块号</th>
-                                    <th class="p-4">哈希值</th>
-                                    <th class="p-4 text-center">交易数</th>
-                                    <th class="p-4">生成时间</th>
-                                    <th class="p-4 text-right">大小</th>
+                                    <th class="p-4">交易 ID</th>
+                                    <th class="p-4">类型</th>
+                                    <th class="p-4">发起者</th>
+                                    <th class="p-4">时间戳</th>
+                                    <th class="p-4 text-center">状态</th>
+                                    <th class="p-4 text-right">操作</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="block in blocks" :key="block.blockNumber"
-                                    @click="showBlockDetail(block.blockNumber)"
-                                    class="table-row-hover cursor-pointer transition text-slate-700">
-                                    <td class="p-4 font-bold text-theme-primary font-mono">#{{ block.blockNumber }}</td>
-                                    <td class="p-4 font-mono text-xs text-slate-500">{{ block.blockHash.substring(0, 32)
-                                        }}...</td>
-                                    <td class="p-4 text-center"><span
-                                            class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-600">{{
-                                            block.txCount }}</span></td>
-                                    <td class="p-4 font-mono text-xs">{{ formatTimestamp(block.timestamp) }}</td>
-                                    <td class="p-4 text-right font-mono text-xs">{{ formatBytes(block.blockSize) }}</td>
+                                <tr v-for="tx in blockTxList" :key="tx.txId" class="table-row-hover">
+                                    <td class="p-4 font-mono text-xs text-theme-primary cursor-pointer hover:underline"
+                                        @click="showTxDetail(tx.txId)">{{ tx.txId.substring(0, 20) }}...</td>
+                                    <td class="p-4 text-xs">{{ formatTxType(tx.type) }}</td>
+                                    <td class="p-4 text-xs font-mono">{{ tx.creatorDomain }}</td>
+                                    <td class="p-4 font-mono text-xs">{{ formatTimestamp(tx.timestamp) }}</td>
+                                    <td class="p-4 text-center">
+                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                            :class="tx.validationCode === 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                                            {{ tx.validationCode === 0 ? 'VALID' : 'INVALID' }}
+                                        </span>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <button @click="showTxDetail(tx.txId)"
+                                            class="text-blue-600 hover:text-blue-800 text-xs font-bold">详情</button>
+                                    </td>
+                                </tr>
+                                <tr v-if="blockTxList.length === 0">
+                                    <td colspan="6" class="p-6 text-center text-slate-400 italic">该页无交易数据或加载中...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -247,184 +384,194 @@
                 </div>
             </div>
 
-            <!-- 区块详情页面 -->
-            <div v-show="currentPage === 'blockDetail'" class="space-y-6">
-                <div class="flex items-center justify-between">
-                    <button @click="navigateTo('home')"
-                        class="btn-ghost px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold"><span>←</span>
-                        返回首页</button>
-                    <h2 class="text-xl font-bold text-slate-800">区块详情 <span class="text-theme-primary font-mono">#{{
-                            blockDetail.blockNumber }}</span></h2>
+            <!-- 交易详情 Modal (局部注册) -->
+            <tx-modal v-if="showTxModal" :tx-id="currentTxId" @close="showTxModal = false"></tx-modal>
+        </div>
+    </template>
+
+    <!-- 3. 节点监控模版 -->
+    <template id="tpl-nodes">
+        <div class="space-y-6">
+            <div class="card-panel rounded-xl p-4 flex flex-wrap gap-4 justify-between items-center">
+                <div class="flex space-x-1 bg-slate-100 p-1 rounded-lg">
+                    <button @click="switchNodeTab('cpu')"
+                        :class="nodeTab === 'cpu' ? 'bg-white shadow text-theme-primary' : 'text-slate-500'"
+                        class="px-6 py-1.5 rounded-md text-sm font-bold transition">CPU</button>
+                    <button @click="switchNodeTab('memory')"
+                        :class="nodeTab === 'memory' ? 'bg-white shadow text-theme-accent' : 'text-slate-500'"
+                        class="px-6 py-1.5 rounded-md text-sm font-bold transition">内存</button>
                 </div>
-                <div class="card-panel rounded-xl p-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                        <div class="space-y-4">
-                            <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">区块哈希 (Block Hash)</div>
-                                <div class="font-mono text-sm text-slate-700 break-all select-all">{{
-                                    blockDetail.blockHash }}</div>
-                            </div>
-                            <div v-if="blockDetail.dataHash" class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">数据哈希 (Data Hash)</div>
-                                <div class="font-mono text-sm text-slate-700 break-all select-all">{{
-                                    blockDetail.dataHash }}</div>
-                            </div>
-                            <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-theme-primary transition cursor-pointer"
-                                @click="navigateToPreviousBlock(blockDetail.previousHash)">
-                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">前块哈希 (Previous Hash)</div>
-                                <div class="font-mono text-sm text-theme-primary break-all">{{ blockDetail.previousHash
-                                    }}</div>
-                            </div>
+                <div class="flex gap-4 text-sm">
+                    <select v-model="timeRange" @change="forceRefreshNode"
+                        class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 outline-none">
+                        <option value="1">最近 1 分钟</option>
+                        <option value="5">最近 5 分钟</option>
+                        <option value="30">最近 30 分钟</option>
+                    </select>
+                    <select v-model="refreshRate" @change="startNodeRefresh"
+                        class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 outline-none">
+                        <option value="3">3s 刷新</option>
+                        <option value="5">5s 刷新</option>
+                        <option value="0">停止刷新</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div v-for="(node, name) in (nodeTab === 'cpu' ? cpuNodes : memoryNodes)" :key="name"
+                    class="card-panel rounded-xl p-6 border-t-4"
+                    :class="nodeTab === 'cpu' ? 'border-t-theme-primary' : 'border-t-theme-accent'">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="font-bold text-slate-700 truncate" :title="name">{{ name }}</h3>
+                        <div class="text-right">
+                            <div class="text-3xl font-mono font-bold" :class="getUsageColor(node.latestUsage)">{{
+                                node.latestUsage.toFixed(1) }}%</div>
                         </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="p-4 bg-blue-50/50 rounded-lg border border-blue-100">
-                                <div class="text-xs font-bold text-slate-400 uppercase">交易数量</div>
-                                <div class="text-2xl font-bold text-theme-primary font-mono">{{ blockDetail.txCount }}
+                    </div>
+                    <div class="h-48 w-full relative">
+                        <canvas :id="`${nodeTab}-chart-${name}`" class="node-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 4. 链上数据模版 -->
+    <template id="tpl-data">
+        <div class="space-y-6">
+            <div class="card-panel rounded-xl p-5 flex flex-col md:flex-row gap-4 justify-between items-center">
+                <div class="flex flex-grow w-full md:w-auto gap-2">
+                    <input v-model="searchTerm" @keyup.enter="filterChainData" type="text"
+                        placeholder="搜索当前页键名 (Key)..."
+                        class="flex-grow bg-slate-50 border border-slate-200 rounded-lg py-2 pl-4 text-slate-700 focus:ring-2 focus:ring-theme-primary outline-none text-sm">
+                    <button @click="showAddDataModal"
+                        class="btn-primary px-4 py-2 rounded-lg font-bold shadow-md whitespace-nowrap text-sm">+
+                        新增</button>
+                </div>
+                <div class="flex items-center space-x-2 text-sm bg-slate-50 p-1 rounded-lg border border-slate-100">
+                    <button @click="prevDataPage" :disabled="dataPageNum === 0"
+                        class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">上一页</button>
+                    <span class="font-mono text-theme-primary font-bold px-1">第 {{ dataPageNum + 1 }} 页</span>
+                    <button @click="nextDataPage" :disabled="chainData.length < dataPageSize"
+                        class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">下一页</button>
+                </div>
+            </div>
+
+            <div class="card-panel rounded-xl p-6 overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="p-4 w-1/4">键名 (Key)</th>
+                            <th class="p-4 w-1/2">键值 (Value)</th>
+                            <th class="p-4 text-right">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr v-if="filteredData.length === 0">
+                            <td colspan="3" class="p-8 text-center text-slate-400 italic">暂无数据或数据为空</td>
+                        </tr>
+                        <tr v-for="(item, idx) in filteredData" :key="item.key" class="table-row-hover">
+                            <td class="p-4 font-mono font-bold text-theme-primary align-top">{{ item.key }}</td>
+                            <td class="p-4 align-top text-slate-600">
+                                <div v-if="item.isJson">
+                                    <button @click="toggleJsonDisplay(idx)"
+                                        class="text-xs text-theme-primary font-bold mb-1 hover:underline">{{
+                                        item.collapsed ? '▶ 展开 JSON' : '▼ 折叠' }}</button>
+                                    <pre v-if="!item.collapsed"
+                                        class="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-600 overflow-x-auto font-mono">{{ item.formattedValue }}</pre>
+                                    <div v-else class="truncate">{{ item.value.substring(0, 50) }}...</div>
                                 </div>
-                            </div>
-                            <div class="p-4 bg-purple-50/50 rounded-lg border border-purple-100">
-                                <div class="text-xs font-bold text-slate-400 uppercase">区块大小</div>
-                                <div class="text-2xl font-bold text-theme-accent font-mono">{{
-                                    formatBytes(blockDetail.blockSize) }}</div>
-                            </div>
-                            <div class="col-span-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                <div class="text-xs font-bold text-slate-400 uppercase">生成时间</div>
-                                <div class="text-lg font-bold text-slate-700 font-mono">{{
-                                    formatTimestamp(blockDetail.timestamp) }}</div>
-                            </div>
-                        </div>
+                                <div v-else class="break-all">{{ truncateText(item.value, 100) }}</div>
+                            </td>
+                            <td class="p-4 text-right space-x-2 align-top">
+                                <button @click="showKeyHistory(item.key)"
+                                    class="btn-ghost px-2 py-1 rounded text-xs">历史</button>
+                                <button @click="deleteKey(item.key)"
+                                    class="text-red-500 hover:text-red-700 text-xs font-bold">删除</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add Data Modal -->
+            <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showAddModal=false"></div>
+                <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl z-10 overflow-hidden relative">
+                    <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-theme-success">新数据上链</h3>
+                        <button @click="showAddModal=false"
+                            class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                     </div>
-                    <h3 class="font-bold text-slate-800 text-lg mb-4 border-b border-slate-200 pb-2">交易列表</h3>
-                    <div class="space-y-3">
-                        <div v-for="txId in blockDetail.txIds" :key="txId" @click="showTxDetail(txId)"
-                            class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md hover:border-theme-primary cursor-pointer transition group">
-                            <span class="font-mono text-sm text-slate-600 group-hover:text-theme-primary">{{ txId
-                                }}</span>
-                            <span class="text-xs font-bold text-slate-400 group-hover:text-theme-primary">查看详情 →</span>
+                    <div class="p-6 space-y-4">
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">键名 (KEY)</label><input
+                                v-model="newKey"
+                                class="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-theme-success outline-none">
                         </div>
-                        <div v-if="!blockDetail.txIds || blockDetail.txIds.length === 0"
-                            class="text-slate-400 italic text-center py-4">无交易记录</div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1">键值 (VALUE JSON)</label><textarea
+                                v-model="newValue" rows="5"
+                                class="w-full border border-slate-300 rounded p-2 font-mono text-sm focus:ring-2 focus:ring-theme-success outline-none"></textarea>
+                        </div>
+                        <button @click="submitData" :disabled="addSubmitting"
+                            class="w-full bg-theme-success text-white py-2 rounded font-bold hover:bg-emerald-700 transition disabled:opacity-50">{{
+                            addSubmitting ? '提交中...' : '提交上链' }}</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 节点监控页面 -->
-            <div v-show="currentPage === 'nodes'" class="space-y-6">
-                <div class="card-panel rounded-xl p-4 flex flex-wrap gap-4 justify-between items-center">
-                    <div class="flex space-x-1 bg-slate-100 p-1 rounded-lg">
-                        <button @click="switchNodeTab('cpu')"
-                            :class="nodeTab === 'cpu' ? 'bg-white shadow text-theme-primary' : 'text-slate-500'"
-                            class="px-6 py-1.5 rounded-md text-sm font-bold transition">CPU</button>
-                        <button @click="switchNodeTab('memory')"
-                            :class="nodeTab === 'memory' ? 'bg-white shadow text-theme-accent' : 'text-slate-500'"
-                            class="px-6 py-1.5 rounded-md text-sm font-bold transition">内存</button>
+            <!-- History Modal -->
+            <div v-if="showHistoryModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showHistoryModal=false"></div>
+                <div
+                    class="bg-white w-full max-w-4xl max-h-[80vh] flex flex-col rounded-xl shadow-2xl z-10 overflow-hidden relative">
+                    <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-slate-800">键值历史: <span class="font-mono text-theme-primary">{{
+                                historyKey }}</span></h3>
+                        <button @click="showHistoryModal=false"
+                            class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                     </div>
-                    <div class="flex gap-4 text-sm">
-                        <select v-model="timeRange" @change="forceRefreshNode"
-                            class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 outline-none">
-                            <option value="1">最近 1 分钟</option>
-                            <option value="5">最近 5 分钟</option>
-                            <option value="30">最近 30 分钟</option>
-                        </select>
-                        <select v-model="refreshRate" @change="startNodeRefresh"
-                            class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 outline-none">
-                            <option value="3">3s 刷新</option>
-                            <option value="5">5s 刷新</option>
-                            <option value="0">停止刷新</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <div v-for="(node, name) in (nodeTab === 'cpu' ? cpuNodes : memoryNodes)" :key="name"
-                        class="card-panel rounded-xl p-6 border-t-4"
-                        :class="nodeTab === 'cpu' ? 'border-t-theme-primary' : 'border-t-theme-accent'">
-                        <div class="flex justify-between items-start mb-4">
-                            <h3 class="font-bold text-slate-700 truncate" :title="name">{{ name }}</h3>
-                            <div class="text-right">
-                                <div class="text-3xl font-mono font-bold" :class="getUsageColor(node.latestUsage)">{{
-                                    node.latestUsage.toFixed(1) }}%</div>
-                            </div>
-                        </div>
-                        <div class="h-48 w-full relative">
-                            <canvas :id="`${nodeTab}-chart-${name}`"></canvas>
-                        </div>
+                    <div class="overflow-y-auto p-0">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 sticky top-0">
+                                <tr>
+                                    <th class="p-3">交易 ID</th>
+                                    <th class="p-3">时间</th>
+                                    <th class="p-3">值</th>
+                                    <th class="p-3">类型</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <tr v-for="h in historyData" :key="h.txId">
+                                    <td class="p-3 font-mono text-theme-primary cursor-pointer hover:underline"
+                                        @click="openTxFromHistory(h.txId)">{{ h.txId.substring(0,10) }}...</td>
+                                    <td class="p-3">{{ formatTimestamp(h.timestamp) }}</td>
+                                    <td class="p-3 font-mono text-xs">{{ truncateText(h.value, 40) }}</td>
+                                    <td class="p-3"><span class="font-bold text-xs px-2 py-1 rounded"
+                                            :class="h.isDelete ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'">{{
+                                            h.isDelete ? '删除' : '写入' }}</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <!-- 链上数据页面 -->
-            <div v-show="currentPage === 'data'" class="space-y-6">
-                <div class="card-panel rounded-xl p-5 flex flex-col md:flex-row gap-4 justify-between items-center">
-                    <div class="flex flex-grow w-full md:w-auto gap-2">
-                        <input v-model="searchTerm" @keyup.enter="filterChainData" type="text"
-                            placeholder="搜索当前页键名 (Key)..."
-                            class="flex-grow bg-slate-50 border border-slate-200 rounded-lg py-2 pl-4 text-slate-700 focus:ring-2 focus:ring-theme-primary outline-none text-sm">
-                        <button @click="showAddDataModal"
-                            class="btn-primary px-4 py-2 rounded-lg font-bold shadow-md whitespace-nowrap text-sm">+
-                            新增</button>
-                    </div>
-                    <div class="flex items-center space-x-2 text-sm bg-slate-50 p-1 rounded-lg border border-slate-100">
-                        <button @click="prevDataPage" :disabled="dataPageNum === 0"
-                            class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">上一页</button>
-                        <span class="font-mono text-theme-primary font-bold px-1">第 {{ dataPageNum + 1 }} 页</span>
-                        <button @click="nextDataPage" :disabled="chainData.length < dataPageSize"
-                            class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">下一页</button>
-                    </div>
-                </div>
+            <!-- 用于历史记录弹窗中的交易详情 -->
+            <tx-modal v-if="showTxModal" :tx-id="currentTxId" @close="showTxModal = false"></tx-modal>
+        </div>
+    </template>
 
-                <div class="card-panel rounded-xl p-6 overflow-hidden">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
-                            <tr>
-                                <th class="p-4 w-1/4">键名 (Key)</th>
-                                <th class="p-4 w-1/2">键值 (Value)</th>
-                                <th class="p-4 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr v-if="filteredData.length === 0">
-                                <td colspan="3" class="p-8 text-center text-slate-400 italic">暂无数据或数据为空</td>
-                            </tr>
-                            <tr v-for="(item, idx) in filteredData" :key="item.key" class="table-row-hover">
-                                <td class="p-4 font-mono font-bold text-theme-primary align-top">{{ item.key }}</td>
-                                <td class="p-4 align-top text-slate-600">
-                                    <div v-if="item.isJson">
-                                        <button @click="toggleJsonDisplay(idx)"
-                                            class="text-xs text-theme-primary font-bold mb-1 hover:underline">{{
-                                            item.collapsed ? '▶ 展开 JSON' : '▼ 折叠' }}</button>
-                                        <pre v-if="!item.collapsed"
-                                            class="bg-slate-50 p-3 rounded border border-slate-200 text-xs text-slate-600 overflow-x-auto font-mono">{{ item.formattedValue }}</pre>
-                                        <div v-else class="truncate">{{ item.value.substring(0, 50) }}...</div>
-                                    </div>
-                                    <div v-else class="break-all">{{ truncateText(item.value, 100) }}</div>
-                                </td>
-                                <td class="p-4 text-right space-x-2 align-top">
-                                    <button @click="showKeyHistory(item.key)"
-                                        class="btn-ghost px-2 py-1 rounded text-xs">历史</button>
-                                    <button @click="deleteKey(item.key)"
-                                        class="text-red-500 hover:text-red-700 text-xs font-bold">删除</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-
-        <!-- Modals -->
-        <div v-if="showHistoryModal || showTxModal || showAddModal"
-            class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="closeAllModals"></div>
-
-            <!-- 交易详情 Modal (重写以匹配后端 JSON tag) -->
-            <div v-if="showTxModal"
-                class="bg-white w-full max-w-3xl max-h-[90vh] flex flex-col rounded-xl shadow-2xl z-10 overflow-hidden">
+    <!-- 5. 交易详情通用模版 (Component) -->
+    <template id="tpl-tx-modal">
+        <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="$emit('close')"></div>
+            <div
+                class="bg-white w-full max-w-3xl max-h-[90vh] flex flex-col rounded-xl shadow-2xl z-20 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <h3 class="font-bold text-lg text-slate-800">交易详情</h3>
-                    <button @click="showTxModal=false" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+                    <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                 </div>
                 <div class="p-6 overflow-y-auto">
-                    <div v-if="txLoading" class="text-center py-10">
+                    <div v-if="loading" class="text-center py-10">
                         <div
                             class="animate-spin w-8 h-8 border-4 border-theme-primary border-t-transparent rounded-full mx-auto">
                         </div>
@@ -440,7 +587,6 @@
                                 <div class="text-xs text-slate-400 font-bold uppercase">时间 (Time)</div>
                                 <div class="text-slate-700 font-bold">{{ formatTimestamp(txDetail.timestamp) }}</div>
                             </div>
-                            <!-- 修改处：使用映射显示中文交易类型 -->
                             <div class="p-3 bg-slate-50 rounded border border-slate-100">
                                 <div class="text-xs text-slate-400 font-bold uppercase">交易类型 (Type)</div>
                                 <div class="text-slate-700 font-bold">{{ formatTxType(txDetail.type) }}</div>
@@ -464,18 +610,14 @@
                                 <div class="text-xs text-slate-400 font-bold uppercase">通道 (Channel)</div>
                                 <div class="text-slate-700 font-bold">{{ txDetail.channelId }}</div>
                             </div>
-
-                            <!-- 新增：显示交易发起者域名 -->
                             <div v-if="txDetail.creatorDomain"
                                 class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
                                 <div class="text-xs text-slate-400 font-bold uppercase">交易发起者 (Creator Domain)</div>
                                 <div class="text-slate-700 font-bold text-theme-primary font-mono">{{
                                     txDetail.creatorDomain }}</div>
                             </div>
-
                         </div>
 
-                        <!-- 链码调用参数 (重要修改：匹配后端小写开头的 chainCodeInfos) -->
                         <div v-if="txDetail.chainCodeInfos && txDetail.chainCodeInfos.length > 0">
                             <h4 class="font-bold text-slate-800 border-l-4 border-theme-primary pl-3 mb-2">链码调用
                                 (Arguments)</h4>
@@ -497,265 +639,94 @@
                         </div>
                         <div v-else
                             class="text-center text-slate-400 text-sm py-4 bg-slate-50 rounded border border-dashed border-slate-300">
-                            无链码调用参数
-                        </div>
+                            无链码调用参数</div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Add Data Modal -->
-            <div v-if="showAddModal" class="bg-white w-full max-w-lg rounded-xl shadow-2xl z-10 overflow-hidden">
-                <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 class="font-bold text-lg text-theme-success">新数据上链</h3>
-                    <button @click="showAddModal=false" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">键名 (KEY)</label><input
-                            v-model="newKey"
-                            class="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-theme-success outline-none">
-                    </div>
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">键值 (VALUE JSON)</label><textarea
-                            v-model="newValue" rows="5"
-                            class="w-full border border-slate-300 rounded p-2 font-mono text-sm focus:ring-2 focus:ring-theme-success outline-none"></textarea>
-                    </div>
-                    <button @click="submitData" :disabled="addSubmitting"
-                        class="w-full bg-theme-success text-white py-2 rounded font-bold hover:bg-emerald-700 transition disabled:opacity-50">{{
-                        addSubmitting ? '提交中...' : '提交上链' }}</button>
-                </div>
-            </div>
-
-            <!-- History Modal -->
-            <div v-if="showHistoryModal"
-                class="bg-white w-full max-w-4xl max-h-[80vh] flex flex-col rounded-xl shadow-2xl z-10 overflow-hidden">
-                <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 class="font-bold text-lg text-slate-800">键值历史: <span class="font-mono text-theme-primary">{{
-                            historyKey }}</span></h3>
-                    <button @click="showHistoryModal=false"
-                        class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
-                </div>
-                <div class="overflow-y-auto p-0">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-500 sticky top-0">
-                            <tr>
-                                <th class="p-3">交易 ID</th>
-                                <th class="p-3">时间</th>
-                                <th class="p-3">值</th>
-                                <th class="p-3">类型</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 text-slate-700">
-                            <tr v-for="h in historyData" :key="h.txId">
-                                <td class="p-3 font-mono text-theme-primary cursor-pointer hover:underline"
-                                    @click="showTxDetail(h.txId)">{{ h.txId.substring(0,10) }}...</td>
-                                <td class="p-3">{{ formatTimestamp(h.timestamp) }}</td>
-                                <td class="p-3 font-mono text-xs">{{ truncateText(h.value, 40) }}</td>
-                                <td class="p-3"><span class="font-bold text-xs px-2 py-1 rounded"
-                                        :class="h.isDelete ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'">{{
-                                        h.isDelete ? '删除' : '写入' }}</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
-    </div>
+    </template>
 
     <script>
-        const { createApp, ref, reactive, nextTick, onMounted, onUnmounted } = Vue;
+        const { createApp, ref, reactive, nextTick, onMounted, onUnmounted, watch } = Vue;
+        const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter;
 
-        createApp({
+        // --- 工具函数 ---
+        const formatNumber = n => n ? n.toLocaleString() : 0;
+        const formatTimestamp = t => t ? new Date(t).toLocaleString('zh-CN') : '-';
+        const formatBytes = b => { if (!b) return '0 B'; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(2)} ${['B', 'KB', 'MB'][i]}`; };
+        const getUsageColor = v => v > 80 ? 'text-red-600' : (v > 50 ? 'text-yellow-500' : 'text-green-600');
+        const truncateText = (t, l) => t && t.length > l ? t.substring(0, l) + '...' : t;
+        const formatTxType = (type) => {
+            const map = { 'ENDORSER_TRANSACTION': '背书交易', 'CONFIG': '配置交易', 'CONFIG_UPDATE': '配置更新', 'PEER_RESOURCE_UPDATE': '节点资源更新' };
+            return map[type] || type;
+        };
+
+        // --- 子组件: 交易详情 Modal ---
+        const TxModalComponent = {
+            template: '#tpl-tx-modal',
+            props: ['txId'],
+            emits: ['close'],
+            setup(props) {
+                const txDetail = ref(null);
+                const loading = ref(true);
+
+                onMounted(async () => {
+                    try {
+                        const r = await fetch(`/valuechain/transaction?txID=${props.txId}`);
+                        txDetail.value = await r.json();
+                    } catch (e) { console.error(e); }
+                    finally { loading.value = false; }
+                });
+
+                return { txDetail, loading, formatTimestamp, formatTxType, formatBytes };
+            }
+        };
+
+        // --- 页面组件: 首页 ---
+        const HomePage = {
+            template: '#tpl-home',
             setup() {
-                const currentPage = ref('home');
-                const blockPage = ref(0);
-                const pageSize = ref(10);
-                const refreshStatus = ref('--');
+                const router = useRouter();
                 const overview = reactive({});
                 const blocks = ref([]);
                 const trendBlocks = ref([]);
-                const nodeTab = ref('cpu');
-                const timeRange = ref('1');
-                const refreshRate = ref('5');
-                const cpuNodes = reactive({});
-                const memoryNodes = reactive({});
-                const cpuCharts = {};
-                const memoryCharts = {};
-                const dataPageNum = ref(0);
-                const dataPageSize = ref(10);
-                const chainData = ref([]);
-                const filteredData = ref([]);
-                const searchTerm = ref('');
-                const showTxModal = ref(false);
-                const showAddModal = ref(false);
-                const showHistoryModal = ref(false);
-                const txDetail = ref(null);
-                const txLoading = ref(false);
-                const historyKey = ref('');
-                const historyData = ref([]);
-                const newKey = ref('');
-                const newValue = ref('');
-                const addSubmitting = ref(false);
-                const blockDetail = reactive({});
-
-                let txChart = null;
-                let blockChart = null;
-                let homeTimer = null;
-                let nodeTimer = null;
+                const blockPage = ref(0);
+                const pageSize = 10;
+                let txChart = null, blockChart = null, timer = null;
 
                 const overviewItems = {
-                    blockHeight: { label: '区块高度', key: 'blockHeight', icon: '🧱' },
+                    blockHeight: { label: '区块高度', key: 'blockHeight', icon: '⛓' },
                     totalTransactionCount: { label: '总交易量', key: 'totalTransactionCount', icon: '⚡' },
                     orgCount: { label: '组织数量', key: 'orgCount', icon: '🏢' },
                     chainCodeCount: { label: '智能合约', key: 'chainCodeCount', icon: '📜' },
                     nodeCount: { label: '活跃节点', key: 'nodeCount', icon: '🖥️' }
                 };
 
-                // 定义交易类型映射函数
-                const formatTxType = (type) => {
-                    const map = {
-                        'ENDORSER_TRANSACTION': '背书交易 (ENDORSER)',
-                        'CONFIG': '配置交易 (CONFIG)',
-                        'CONFIG_UPDATE': '配置更新 (CONFIG_UPDATE)',
-                        'PEER_RESOURCE_UPDATE': '节点资源更新 (PEER_RESOURCE)'
-                    };
-                    return map[type] || type;
-                };
-
-                const refreshNodeData = async () => {
-                    const currentTab = nodeTab.value;
-                    const url = currentTab === 'cpu' ? '/valuechain/cpuHistory' : '/valuechain/memoryHistory';
+                const refreshData = async () => {
                     try {
-                        const res = await fetch(url);
-                        if (!res.ok) return;
-                        const data = await res.json();
-                        const targetNodes = currentTab === 'cpu' ? cpuNodes : memoryNodes;
-                        const targetCharts = currentTab === 'cpu' ? cpuCharts : memoryCharts;
-                        const cutoffTime = Date.now() - (parseInt(timeRange.value) * 60 * 1000);
-
-                        Object.keys(data).forEach(name => {
-                            const fullHist = data[name] || [];
-                            const last = fullHist[fullHist.length - 1] || {};
-                            let val = 0;
-                            if (currentTab === 'cpu') {
-                                val = last.CPUUsage || 0;
-                            } else {
-                                if (last.TotalMemory && last.TotalMemory > 0) {
-                                    val = (last.UsedMemory / last.TotalMemory) * 100;
-                                }
-                            }
-                            targetNodes[name] = { latestUsage: val };
-                        });
-
-                        nextTick(() => {
-                            if (nodeTab.value !== currentTab) return;
-                            Object.keys(data).forEach(name => {
-                                const fullHist = data[name] || [];
-                                const filteredHist = fullHist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
-                                const labels = filteredHist.map(d => new Date(d.Timestamp).toLocaleTimeString());
-                                const values = filteredHist.map(d => {
-                                    if (currentTab === 'cpu') return d.CPUUsage || 0;
-                                    return (d.TotalMemory > 0) ? (d.UsedMemory / d.TotalMemory) * 100 : 0;
-                                });
-
-                                const maxVal = Math.max(...values, 0);
-                                let suggestedMax = Math.ceil(maxVal / 10) * 10;
-                                if (suggestedMax < 10) suggestedMax = 10;
-                                if (suggestedMax > 100) suggestedMax = 100;
-
-                                const ctxId = `${currentTab}-chart-${name}`;
-                                const ctx = document.getElementById(ctxId);
-
-                                if (ctx) {
-                                    if (targetCharts[name]) {
-                                        targetCharts[name].data.labels = labels;
-                                        targetCharts[name].data.datasets[0].data = values;
-                                        targetCharts[name].options.scales.y.max = suggestedMax;
-                                        targetCharts[name].update('none');
-                                    } else {
-                                        const chartInstance = Chart.getChart(ctx);
-                                        if (chartInstance) chartInstance.destroy();
-                                        const color = currentTab === 'cpu' ? '#2563eb' : '#9333ea';
-                                        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
-                                        gradient.addColorStop(0, currentTab === 'cpu' ? 'rgba(37, 99, 235, 0.2)' : 'rgba(147, 51, 234, 0.2)');
-                                        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-                                        targetCharts[name] = new Chart(ctx, {
-                                            type: 'line',
-                                            data: {
-                                                labels: labels,
-                                                datasets: [{
-                                                    data: values, borderColor: color, backgroundColor: gradient,
-                                                    borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.2
-                                                }]
-                                            },
-                                            options: {
-                                                responsive: true, maintainAspectRatio: false, animation: false,
-                                                interaction: { intersect: false, mode: 'index' },
-                                                plugins: { legend: { display: false }, tooltip: { enabled: true } },
-                                                scales: {
-                                                    x: { display: false },
-                                                    y: { display: true, min: 0, max: suggestedMax, ticks: { stepSize: 10, color: '#94a3b8', font: { size: 10 } }, grid: { color: '#f1f5f9' } }
-                                                }
-                                            }
-                                        });
-                                    }
-                                }
-                            });
-                        });
-                    } catch (e) { console.error("Monitor Error:", e); }
-                };
-
-                const startNodeRefresh = () => {
-                    clearInterval(nodeTimer);
-                    if (refreshRate.value > 0) nodeTimer = setInterval(refreshNodeData, refreshRate.value * 1000);
-                };
-
-                const switchNodeTab = (t) => {
-                    if (nodeTab.value === t) return;
-                    clearInterval(nodeTimer);
-                    const oldCharts = nodeTab.value === 'cpu' ? cpuCharts : memoryCharts;
-                    Object.values(oldCharts).forEach(c => c.destroy());
-                    if (nodeTab.value === 'cpu') {
-                        for (const key in cpuCharts) delete cpuCharts[key];
-                    } else {
-                        for (const key in memoryCharts) delete memoryCharts[key];
-                    }
-                    nodeTab.value = t;
-                    nextTick(() => { refreshNodeData(); startNodeRefresh(); });
-                };
-
-                const forceRefreshNode = () => { nextTick(refreshNodeData); };
-
-                const navigateTo = (page) => {
-                    currentPage.value = page;
-                    if (page === 'home') refreshHomeData();
-                    if (page === 'nodes') { nextTick(() => { refreshNodeData(); startNodeRefresh(); }); } else { clearInterval(nodeTimer); }
-                    if (page === 'data') loadChainData();
-                };
-
-                const refreshCurrentPage = () => {
-                    if (currentPage.value === 'home') refreshHomeData();
-                    else if (currentPage.value === 'nodes') refreshNodeData();
-                    else if (currentPage.value === 'data') loadChainData();
-                };
-
-                const refreshHomeData = async () => { await Promise.all([loadOverviewData(), loadBlocks(), loadTrendData()]); refreshStatus.value = new Date().toLocaleTimeString('zh-CN'); };
-                const loadOverviewData = async () => { try { const r = await fetch('/valuechain/info'); if (r.ok) Object.assign(overview, await r.json()); } catch (e) { } };
-                const loadBlocks = async () => { try { const r = await fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize.value}`); if (r.ok) blocks.value = (await r.json()).blockPage || []; } catch (e) { } };
-
-                const loadTrendData = async () => {
-                    try {
-                        const res = await fetch('/valuechain/trend');
-                        if (res.ok) {
-                            const data = await res.json();
+                        const [infoRes, blockRes, trendRes] = await Promise.all([
+                            fetch('/valuechain/info'),
+                            fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize}`),
+                            fetch('/valuechain/trend')
+                        ]);
+                        if (infoRes.ok) Object.assign(overview, await infoRes.json());
+                        if (blockRes.ok) blocks.value = (await blockRes.json()).blockPage || [];
+                        if (trendRes.ok) {
+                            const data = await trendRes.json();
                             trendBlocks.value = data.blockPage || [];
-                            processTrendCharts(data.blockPage || []);
+                            processCharts(trendBlocks.value);
                         }
-                    } catch (e) { }
+                    } catch (e) { console.error("Home refresh failed", e); }
                 };
 
-                const processTrendCharts = (rawBlocks) => {
-                    const labels = []; const now = new Date(); now.setMinutes(0, 0, 0);
+                const processCharts = (rawBlocks) => {
+                    const ctxTx = document.getElementById('txChart');
+                    const ctxBlk = document.getElementById('blockChart');
+                    if (!ctxTx || !ctxBlk) return;
+
                     const buckets = {};
+                    const now = new Date(); now.setMinutes(0, 0, 0);
+                    const labels = [];
                     for (let i = 23; i >= 0; i--) {
                         const d = new Date(now.getTime() - i * 3600000);
                         const k = `${d.getDate()}-${d.getHours()}`;
@@ -767,42 +738,175 @@
                         const k = `${d.getDate()}-${d.getHours()}`;
                         if (buckets[k]) { buckets[k].blk++; buckets[k].tx += b.txCount; }
                     });
-                    const txData = Object.values(buckets).map(v => v.tx);
-                    const blkData = Object.values(buckets).map(v => v.blk);
-                    const ctxTx = document.getElementById('txChart');
-                    const ctxBlk = document.getElementById('blockChart');
-                    if (ctxTx && ctxBlk) {
-                        if (txChart) txChart.destroy();
-                        if (blockChart) blockChart.destroy();
-                        const grad = ctxTx.getContext('2d').createLinearGradient(0, 0, 0, 300);
-                        grad.addColorStop(0, 'rgba(37, 99, 235, 0.5)'); grad.addColorStop(1, 'rgba(37, 99, 235, 0)');
-                        txChart = new Chart(ctxTx, { type: 'line', data: { labels, datasets: [{ data: txData, borderColor: '#2563eb', backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 0 }] }, options: getHomeChartOpts() });
-                        blockChart = new Chart(ctxBlk, { type: 'bar', data: { labels, datasets: [{ data: blkData, backgroundColor: '#9333ea', borderRadius: 3 }] }, options: getHomeChartOpts() });
-                    }
-                };
-                const getHomeChartOpts = () => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#e2e8f0', borderDash: [4, 4] } } } });
 
-                const showBlockDetail = async (bn) => { const r = await fetch(`/valuechain/block?blockNum=${bn}`); Object.assign(blockDetail, await r.json()); currentPage.value = 'blockDetail'; };
-                const navigateToPreviousBlock = (ph) => { if (ph && !ph.startsWith('0000')) showBlockDetail(blockDetail.blockNumber - 1); };
-                const showTxDetail = async (tid) => { txLoading.value = true; showTxModal.value = true; const r = await fetch(`/valuechain/transaction?txID=${tid}`); txDetail.value = await r.json(); txLoading.value = false; };
+                    const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#e2e8f0', borderDash: [4, 4] } } } };
+
+                    if (txChart) txChart.destroy();
+                    txChart = new Chart(ctxTx, {
+                        type: 'line',
+                        data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.tx), borderColor: '#2563eb', backgroundColor: '#2563eb20', fill: true, tension: 0.4 }] },
+                        options: opts
+                    });
+
+                    if (blockChart) blockChart.destroy();
+                    blockChart = new Chart(ctxBlk, {
+                        type: 'bar',
+                        data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.blk), backgroundColor: '#9333ea', borderRadius: 3 }] },
+                        options: opts
+                    });
+                };
+
+                const prevPage = () => { if (blockPage.value > 0) { blockPage.value--; refreshData(); } };
+                const nextPage = () => { blockPage.value++; refreshData(); };
+                const goToBlock = (num) => router.push('/block/' + num);
+
+                onMounted(() => { refreshData(); timer = setInterval(refreshData, 10000); });
+                onUnmounted(() => { clearInterval(timer); if (txChart) txChart.destroy(); if (blockChart) blockChart.destroy(); });
+
+                // 暴露给父组件调用
+                const triggerRefresh = () => refreshData();
+
+                return { overview, overviewItems, blocks, trendBlocks, blockPage, pageSize, formatNumber, formatTimestamp, formatBytes, prevPage, nextPage, goToBlock, triggerRefresh };
+            }
+        };
+
+        // --- 页面组件: 节点监控 ---
+        const NodesPage = {
+            template: '#tpl-nodes',
+            name: 'NodesPage',
+            setup() {
+                const nodeTab = ref('cpu');
+                const timeRange = ref('1');
+                const refreshRate = ref('5');
+                const cpuNodes = reactive({});
+                const memoryNodes = reactive({});
+                const charts = {}; // 存储所有图表实例
+                let timer = null;
+
+                const refreshNodeData = async () => {
+                    const currentTab = nodeTab.value;
+                    const url = currentTab === 'cpu' ? '/valuechain/cpuHistory' : '/valuechain/memoryHistory';
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const targetNodes = currentTab === 'cpu' ? cpuNodes : memoryNodes;
+                        const cutoffTime = Date.now() - (parseInt(timeRange.value) * 60 * 1000);
+
+                        // Update latest values
+                        Object.keys(data).forEach(name => {
+                            const hist = data[name] || [];
+                            const last = hist[hist.length - 1] || {};
+                            targetNodes[name] = { latestUsage: currentTab === 'cpu' ? (last.CPUUsage || 0) : ((last.TotalMemory > 0) ? (last.UsedMemory / last.TotalMemory * 100) : 0) };
+                        });
+
+                        // Update Charts
+                        nextTick(() => {
+                            Object.keys(data).forEach(name => {
+                                const hist = data[name] || [];
+                                const filtered = hist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
+                                const labels = filtered.map(d => new Date(d.Timestamp).toLocaleTimeString());
+                                const values = filtered.map(d => currentTab === 'cpu' ? (d.CPUUsage || 0) : (d.TotalMemory > 0 ? (d.UsedMemory / d.TotalMemory * 100) : 0));
+
+                                const ctxId = `${currentTab}-chart-${name}`;
+                                const ctx = document.getElementById(ctxId);
+                                if (!ctx) return;
+
+                                const chartKey = name; // 每个tab下分别存储
+
+                                // 如果已经存在图表实例，更新数据
+                                if (charts[ctxId]) {
+                                    charts[ctxId].data.labels = labels;
+                                    charts[ctxId].data.datasets[0].data = values;
+                                    charts[ctxId].update('none');
+                                } else {
+                                    // 创建新图表
+                                    const color = currentTab === 'cpu' ? '#2563eb' : '#9333ea';
+                                    charts[ctxId] = new Chart(ctx, {
+                                        type: 'line',
+                                        data: {
+                                            labels: labels,
+                                            datasets: [{ data: values, borderColor: color, borderWidth: 2, pointRadius: 0, fill: false, tension: 0.2 }]
+                                        },
+                                        options: {
+                                            responsive: true, maintainAspectRatio: false, animation: false,
+                                            plugins: { legend: { display: false } },
+                                            scales: { x: { display: false }, y: { min: 0, suggestedMax: 100, ticks: { stepSize: 20 } } }
+                                        }
+                                    });
+                                }
+                            });
+                        });
+                    } catch (e) { console.error(e); }
+                };
+
+                const startNodeRefresh = () => {
+                    clearInterval(timer);
+                    if (refreshRate.value > 0) timer = setInterval(refreshNodeData, refreshRate.value * 1000);
+                };
+
+                const forceRefreshNode = () => { refreshNodeData(); };
+
+                const switchNodeTab = (t) => {
+                    nodeTab.value = t;
+                    // 切换Tab后，旧的DOM消失，图表实例其实失效了，需要清空引用，并在下一次 refreshData 中重建
+                    // 这里不需要手动 destroy 以前的 chart，因为 canvas 元素已经变了
+                    // 但是为了内存考虑，可以清理 keys
+                    Object.keys(charts).forEach(k => {
+                        if (k.startsWith(t === 'cpu' ? 'memory' : 'cpu')) {
+                            // charts[k].destroy(); // DOM已移除，destroy可能会报错，直接delete引用即可
+                            delete charts[k];
+                        }
+                    });
+                    nextTick(() => { refreshNodeData(); });
+                };
+
+                onMounted(() => { refreshNodeData(); startNodeRefresh(); });
+                onUnmounted(() => { clearInterval(timer); Object.values(charts).forEach(c => c.destroy()); });
+
+                const triggerRefresh = () => refreshNodeData();
+
+                return { nodeTab, timeRange, refreshRate, cpuNodes, memoryNodes, switchNodeTab, forceRefreshNode, startNodeRefresh, getUsageColor, triggerRefresh };
+            }
+        };
+
+        // --- 页面组件: 链上数据 ---
+        const DataPage = {
+            template: '#tpl-data',
+            components: { 'tx-modal': TxModalComponent },
+            setup() {
+                const chainData = ref([]);
+                const filteredData = ref([]);
+                const dataPageNum = ref(0);
+                const dataPageSize = ref(10);
+                const searchTerm = ref('');
+
+                // Modals state
+                const showAddModal = ref(false);
+                const showHistoryModal = ref(false);
+                const showTxModal = ref(false);
+                const currentTxId = ref('');
+
+                const newKey = ref('');
+                const newValue = ref('');
+                const addSubmitting = ref(false);
+                const historyKey = ref('');
+                const historyData = ref([]);
 
                 const loadChainData = async () => {
                     try {
                         const r = await fetch(`/valuechain/data/all?pageNum=${dataPageNum.value}&pageSize=${dataPageSize.value}`);
                         if (r.ok) {
-                            const res = await r.json();
-                            chainData.value = res.results || [];
+                            chainData.value = (await r.json()).results || [];
                             filterChainData();
                         }
-                    } catch (e) { console.error("Load Data Error", e); }
+                    } catch (e) { console.error(e); }
                 };
 
                 const filterChainData = () => {
-                    let dataToFilter = chainData.value;
-                    if (searchTerm.value) {
-                        dataToFilter = chainData.value.filter(i => i.key.includes(searchTerm.value));
-                    }
-                    filteredData.value = dataToFilter.map(i => ({
+                    let d = chainData.value;
+                    if (searchTerm.value) d = d.filter(i => i.key.includes(searchTerm.value));
+                    filteredData.value = d.map(i => ({
                         ...i,
                         isJson: i.value && i.value.trim().startsWith('{'),
                         formattedValue: i.value && i.value.trim().startsWith('{') ? tryFormatJson(i.value) : i.value,
@@ -810,56 +914,147 @@
                     }));
                 };
 
-                const tryFormatJson = (str) => {
-                    try { return JSON.stringify(JSON.parse(str), null, 2); } catch (e) { return str; }
-                };
+                const tryFormatJson = (str) => { try { return JSON.stringify(JSON.parse(str), null, 2); } catch (e) { return str; } };
+                const toggleJsonDisplay = i => filteredData.value[i].collapsed = !filteredData.value[i].collapsed;
 
                 const prevDataPage = () => { if (dataPageNum.value > 0) { dataPageNum.value--; loadChainData(); } };
                 const nextDataPage = () => { if (chainData.value.length === dataPageSize.value) { dataPageNum.value++; loadChainData(); } };
-                const toggleJsonDisplay = i => filteredData.value[i].collapsed = !filteredData.value[i].collapsed;
+
+                // Actions
                 const showAddDataModal = () => { newKey.value = ''; newValue.value = ''; showAddModal.value = true; };
                 const submitData = async () => {
                     addSubmitting.value = true;
-                    await fetch('/valuechain/data', { method: 'POST', body: JSON.stringify({ key: newKey.value, value: newValue.value }) });
-                    showAddModal.value = false;
-                    addSubmitting.value = false;
-                    loadChainData();
+                    try {
+                        await fetch('/valuechain/data', { method: 'POST', body: JSON.stringify({ key: newKey.value, value: newValue.value }) });
+                        showAddModal.value = false;
+                        loadChainData();
+                    } finally { addSubmitting.value = false; }
                 };
                 const deleteKey = async (k) => {
-                    if (confirm('确认删除该键值 (Key)?')) {
+                    if (confirm('确认删除?')) {
                         await fetch('/valuechain/data/delete', { method: 'POST', body: JSON.stringify({ key: k }) });
                         loadChainData();
                     }
                 };
-                const showKeyHistory = async (k) => { historyKey.value = k; showHistoryModal.value = true; const r = await fetch(`/valuechain/data/history?key=${k}`); historyData.value = await r.json(); };
-                const closeAllModals = () => { showTxModal.value = false; showAddModal.value = false; showHistoryModal.value = false; };
+                const showKeyHistory = async (k) => {
+                    historyKey.value = k;
+                    showHistoryModal.value = true;
+                    const r = await fetch(`/valuechain/data/history?key=${k}`);
+                    historyData.value = await r.json();
+                };
 
-                const formatNumber = n => n ? n.toLocaleString() : 0;
-                const formatTimestamp = t => t ? new Date(t).toLocaleString('zh-CN') : '-';
-                const formatBytes = b => { if (!b) return '0 B'; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(2)} ${['B', 'KB', 'MB'][i]}`; };
-                const getUsageColor = v => v > 80 ? 'text-red-600' : (v > 50 ? 'text-yellow-500' : 'text-green-600');
-                const truncateText = (t, l) => t && t.length > l ? t.substring(0, l) + '...' : t;
-                const prevPage = () => { if (blockPage.value > 0) { blockPage.value--; loadBlocks(); } };
-                const nextPage = () => { blockPage.value++; loadBlocks(); };
+                const openTxFromHistory = (txId) => {
+                    currentTxId.value = txId;
+                    showTxModal.value = true;
+                };
 
-                onMounted(() => { refreshHomeData(); homeTimer = setInterval(() => { if (currentPage.value === 'home') refreshHomeData(); }, 10000); });
-                onUnmounted(() => { clearInterval(homeTimer); clearInterval(nodeTimer); });
+                onMounted(loadChainData);
+                const triggerRefresh = () => loadChainData();
 
                 return {
-                    currentPage, overview, overviewItems, blocks, trendBlocks, blockPage, pageSize, refreshStatus,
-                    nodeTab, timeRange, refreshRate, cpuNodes, memoryNodes,
-                    dataPageNum, dataPageSize, prevDataPage, nextDataPage,
-                    chainData, filteredData, searchTerm,
-                    showTxModal, showAddModal, showHistoryModal, txDetail, txLoading, historyKey, historyData,
-                    newKey, newValue, addSubmitting, blockDetail,
-                    navigateTo, refreshCurrentPage, showBlockDetail, showTxDetail, navigateToPreviousBlock,
-                    switchNodeTab, showAddDataModal, submitData, deleteKey, showKeyHistory, toggleJsonDisplay,
-                    prevPage, nextPage, closeAllModals, filterChainData, loadChainData, refreshNodeData, startNodeRefresh, forceRefreshNode,
-                    formatNumber, formatTimestamp, formatBytes, getUsageColor, truncateText,
-                    formatTxType // 导出新函数供模板使用
+                    chainData, filteredData, searchTerm, dataPageNum, dataPageSize,
+                    showAddModal, showHistoryModal, showTxModal, currentTxId,
+                    newKey, newValue, addSubmitting, historyKey, historyData,
+                    prevDataPage, nextDataPage, filterChainData, toggleJsonDisplay, truncateText, formatTimestamp,
+                    showAddDataModal, submitData, deleteKey, showKeyHistory, openTxFromHistory, triggerRefresh
                 };
             }
-        }).mount('#app');
+        };
+
+        // --- 页面组件: 区块详情 ---
+        const BlockDetailPage = {
+            template: '#tpl-block-detail',
+            components: { 'tx-modal': TxModalComponent },
+            setup() {
+                const route = useRoute();
+                const router = useRouter();
+                const loading = ref(true);
+                const blockDetail = reactive({});
+                const blockTxList = ref([]);
+                const blockTxPage = ref(0);
+                const blockTxPageSize = ref(10);
+                const blockTxTotal = ref(0);
+
+                const showTxModal = ref(false);
+                const currentTxId = ref('');
+
+                const loadBlock = async (bn) => {
+                    loading.value = true;
+                    try {
+                        const r = await fetch(`/valuechain/block?blockNum=${bn}`);
+                        Object.assign(blockDetail, await r.json());
+                        blockTxPage.value = 0;
+                        await loadTxs(bn);
+                    } catch (e) { console.error(e); }
+                    finally { loading.value = false; }
+                };
+
+                const loadTxs = async (bn) => {
+                    const r = await fetch(`/valuechain/block/transactions?blockNum=${bn}&pageNum=${blockTxPage.value}&pageSize=${blockTxPageSize.value}`);
+                    if (r.ok) {
+                        const d = await r.json();
+                        blockTxList.value = d.txPage || [];
+                        blockTxTotal.value = d.total || 0;
+                    }
+                };
+
+                // 监听路由参数变化（例如点击上一块）
+                watch(() => route.params.blockId, (newId) => {
+                    if (newId) loadBlock(newId);
+                }, { immediate: true });
+
+                const prevBlockTxPage = () => { blockTxPage.value--; loadTxs(blockDetail.blockNumber); };
+                const nextBlockTxPage = () => { blockTxPage.value++; loadTxs(blockDetail.blockNumber); };
+                const goToBlock = (num) => router.push('/block/' + num);
+
+                const showTxDetail = (id) => { currentTxId.value = id; showTxModal.value = true; };
+                const triggerRefresh = () => loadBlock(route.params.blockId);
+
+                return {
+                    loading, blockDetail, blockTxList, blockTxPage, blockTxPageSize, blockTxTotal,
+                    showTxModal, currentTxId,
+                    prevBlockTxPage, nextBlockTxPage, goToBlock, showTxDetail,
+                    formatNumber, formatTimestamp, formatBytes, formatTxType, triggerRefresh
+                };
+            }
+        };
+
+        // --- 路由配置 ---
+        const routes = [
+            { path: '/', component: HomePage },
+            { path: '/nodes', component: NodesPage },
+            { path: '/data', component: DataPage },
+            { path: '/block/:blockId', component: BlockDetailPage }
+        ];
+
+        const router = createRouter({
+            history: createWebHashHistory(), // 使用 Hash 模式 (#/nodes)，兼容性最好
+            routes
+        });
+
+        // --- 根组件 ---
+        const App = {
+            setup() {
+                const refreshStatus = ref('--');
+                const viewComponent = ref(null); // 获取当前路由组件的引用
+
+                // 更新右上角时间
+                setInterval(() => { refreshStatus.value = new Date().toLocaleTimeString('zh-CN'); }, 1000);
+
+                // 全局刷新按钮逻辑：调用子组件暴露的 triggerRefresh 方法
+                const triggerGlobalRefresh = () => {
+                    if (viewComponent.value && viewComponent.value.triggerRefresh) {
+                        viewComponent.value.triggerRefresh();
+                    }
+                };
+
+                return { refreshStatus, viewComponent, triggerGlobalRefresh };
+            }
+        };
+
+        const app = createApp(App);
+        app.use(router);
+        app.mount('#app');
     </script>
 </body>
 

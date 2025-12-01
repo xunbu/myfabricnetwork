@@ -101,6 +101,8 @@ func main() {
 
 		v1.GET("/blocks", getBlockListByPage)
 		v1.GET("/block", getBlockByNum)
+		// 修正：这里调用本地实现的 Handler 函数
+		v1.GET("/block/transactions", getBlockTransactionsByPage)
 		v1.GET("/cpuHistory", getCpuHistory)
 		v1.GET("/memoryHistory", getMemoryHistory)
 		v1.GET("/data/all", GetAllDataByPageWithLimit)
@@ -192,6 +194,40 @@ func getBlockByNum(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取区块详情失败: " + err.Error()})
 		return
 	}
+	c.JSON(http.StatusOK, response)
+}
+
+// getBlockTransactionsByPage 是根据区块号分页获取该区块内交易的 Handler
+func getBlockTransactionsByPage(c *gin.Context) {
+	gw := c.MustGet("gateway").(*client.Gateway)
+	channelName := c.MustGet("channelName").(string)
+
+	// 1. 获取 blockNum
+	blockNumStr := c.Query("blockNum")
+	if blockNumStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数 blockNum 不能为空"})
+		return
+	}
+	blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 blockNum 格式"})
+		return
+	}
+
+	// 2. 获取分页参数
+	pageNumStr := c.DefaultQuery("pageNum", "0")
+	pageNum, _ := strconv.Atoi(pageNumStr)
+
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+
+	// 3. 调用 Gateway 逻辑
+	response, err := gateway.GetBlockTransactionsByPage(gw, channelName, blockNum, pageNum, pageSize)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取区块交易失败: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, response)
 }
 
