@@ -44,6 +44,11 @@ func main() {
 	}
 	defer gw.Close()
 
+	// [优化] 启动全量区块监控 (后台维护内存缓存)
+	if err := gateway.StartChainMonitor(gw, channelName); err != nil {
+		log.Printf("启动区块链监控失败: %v", err)
+	}
+
 	chaincodeGateway, err := admin.GetChaincodeGateway(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
 		log.Fatalf("获取 Chaincode Gateway 实例失败: %v", err)
@@ -85,29 +90,27 @@ func main() {
 		c.Next()
 	})
 
-	// 4. 定义 API 路由 (仅使用 GET 和 POST)
+	// 4. 定义 API 路由
 	v1 := r.Group("/valuechain")
 	{
-		// 查询类接口 (GET)
+		// 概览信息 (内存直读)
 		v1.GET("/info", getValueChainInfo)
+
+		// [优化] 趋势数据 (内存直读)
+		v1.GET("/trend", getTrendData)
+
 		v1.GET("/blocks", getBlockListByPage)
 		v1.GET("/block", getBlockByNum)
 		v1.GET("/cpuHistory", getCpuHistory)
 		v1.GET("/memoryHistory", getMemoryHistory)
-		v1.GET("/data/all", getAllData)
+		v1.GET("/data/all", GetAllDataByPageWithLimit)
 		v1.GET("/data/history", getKeyHistory)
 		v1.GET("/transaction", getTxByID)
 
-		// 写入类接口 (POST)
-		// 数据通过 JSON 请求体传递: {"key": "someKey", "value": "someValue"}
 		v1.POST("/data", putValue)
-
-		// 删除类接口 (POST)
-		// 数据通过 JSON 请求体传递: {"key": "key_to_delete"}
 		v1.POST("/data/delete", deleteKey)
 	}
 
-	// 5. 启动服务器
 	log.Printf("服务器正在启动，监听端口: %s", serverPort)
 	if err := r.Run(":" + serverPort); err != nil {
 		log.Fatalf("启动 Gin 服务器失败: %v", err)
@@ -117,44 +120,45 @@ func main() {
 // --- Handler Functions ---
 
 func getValueChainInfo(c *gin.Context) {
-	// 从上下文中获取依赖项
-	gw := c.MustGet("gateway").(*client.Gateway)
-	channelName := c.MustGet("channelName").(string)
 	chaincodeGateway := c.MustGet("chaincodeGateway").(*chaincode.Gateway)
 	discoveryPeer := c.MustGet("discoveryPeer").(*discovery.Peer)
 	clientConnection := c.MustGet("connection").(*grpc.ClientConn)
+	channelName := c.MustGet("channelName").(string)
 
 	response := gin.H{}
 	var err error
 
-	response["blockHeight"], err = gateway.GetBlockHeight(gw, channelName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取区块高度失败: " + err.Error()})
-		return
-	}
+	// 从缓存获取核心指标 (O(1))
+	stats := gateway.GetChainStats()
 
-	response["totalTransactionCount"], err = gateway.GetTransactionCount(gw, channelName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取交易总数失败: " + err.Error()})
-		return
-	}
+	response["blockHeight"] = stats.Height
+	response["totalTransactionCount"] = stats.TxCount
+	response["orgCount"] = stats.OrgCount
+	response["lastBlockTime"] = stats.LastBlockTime
 
-	response["orgCount"], err = gateway.GetOrganizationCount(gw, channelName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取组织数量失败: " + err.Error()})
-		return
-	}
-
+	// 其它低频数据 (容错处理)
 	response["chainCodeCount"], err = admin.GetChaincodeCount(chaincodeGateway, channelName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取链码数量失败: " + err.Error()})
-		return
+		response["chainCodeCount"] = 0
 	}
-
 	response["nodeCount"], err = admin.GetNodesCount(discoveryPeer, channelName, context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取节点数量失败: " + err.Error()})
-		return
+		response["nodeCount"] = 0
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// [超级优化] 直接从内存返回，0 网络开销
+func getTrendData(c *gin.Context) {
+	trendData := gateway.GetTrendData()
+
+	// 构造成 BlockPage 格式返回给前端
+	response := &gateway.BlockPage{
+		Results:  trendData,
+		Page:     0,
+		PageSize: len(trendData),
+		Total:    len(trendData),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -163,21 +167,12 @@ func getValueChainInfo(c *gin.Context) {
 func getBlockListByPage(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-
 	pageNumStr := c.DefaultQuery("pageNum", "0")
-	pageNum, err := strconv.ParseUint(pageNumStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 pageNum 参数"})
-		return
-	}
-
+	pageNum, _ := strconv.ParseUint(pageNumStr, 10, 64)
 	pageSizeStr := c.DefaultQuery("pageSize", "10")
-	pageSize, err := strconv.ParseUint(pageSizeStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 pageSize 参数"})
-		return
-	}
+	pageSize, _ := strconv.ParseUint(pageSizeStr, 10, 64)
 
+	// 列表页包含交易详情
 	response, err := gateway.GetBlockListByPage(gw, channelName, pageNum, pageSize, true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取区块列表失败: " + err.Error()})
@@ -189,18 +184,8 @@ func getBlockListByPage(c *gin.Context) {
 func getBlockByNum(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-
 	blockNumStr := c.Query("blockNum")
-	if blockNumStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 blockNum 参数"})
-		return
-	}
-
-	blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 blockNum 参数"})
-		return
-	}
+	blockNum, _ := strconv.ParseUint(blockNumStr, 10, 64)
 
 	response, err := gateway.GetBlockByNum(gw, channelName, blockNum)
 	if err != nil {
@@ -211,23 +196,25 @@ func getBlockByNum(c *gin.Context) {
 }
 
 func getCpuHistory(c *gin.Context) {
-	allHistory := docker.GetAllCPUHistory()
-	c.JSON(http.StatusOK, allHistory)
+	c.JSON(http.StatusOK, docker.GetAllCPUHistory())
 }
 
 func getMemoryHistory(c *gin.Context) {
-	allHistory := docker.GetAllMemoryHistory()
-	c.JSON(http.StatusOK, allHistory)
+	c.JSON(http.StatusOK, docker.GetAllMemoryHistory())
 }
 
-func getAllData(c *gin.Context) {
+func GetAllDataByPageWithLimit(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
 	chaincodeName := c.MustGet("chaincodeName").(string)
+	pageNumStr := c.DefaultQuery("pageNum", "0")
+	pageNum, _ := strconv.ParseUint(pageNumStr, 10, 64)
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	pageSize, _ := strconv.ParseUint(pageSizeStr, 10, 64)
 
-	v, err := gateway.GetAllData(gw, channelName, chaincodeName)
+	v, err := gateway.GetAllDataByPageWithLimit(gw, channelName, chaincodeName, int(pageNum), int(pageSize))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取所有数据失败: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取数据失败: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, v)
@@ -237,16 +224,10 @@ func getKeyHistory(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
 	chaincodeName := c.MustGet("chaincodeName").(string)
-
 	key := c.Query("key")
-	if key == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 key 参数"})
-		return
-	}
-
 	keyHistory, err := gateway.GetKeyHistory(gw, channelName, chaincodeName, key)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取 key 历史记录失败: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取历史失败: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, keyHistory)
@@ -255,13 +236,7 @@ func getKeyHistory(c *gin.Context) {
 func getTxByID(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
-
 	txID := c.Query("txID")
-	if txID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 txID 参数"})
-		return
-	}
-
 	txInfo, err := gateway.GetTxByID(gw, channelName, txID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取交易详情失败: " + err.Error()})
@@ -270,7 +245,6 @@ func getTxByID(c *gin.Context) {
 	c.JSON(http.StatusOK, txInfo)
 }
 
-// 定义用于接收 POST (PutValue) 请求体的结构体
 type PutValueRequest struct {
 	Key   string `json:"key" binding:"required"`
 	Value string `json:"value" binding:"required"`
@@ -280,22 +254,19 @@ func putValue(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
 	chaincodeName := c.MustGet("chaincodeName").(string)
-
 	var req PutValueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求体: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效请求: " + err.Error()})
 		return
 	}
-
 	_, err := gateway.PutValue(gw, channelName, chaincodeName, req.Key, req.Value)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "写入数据失败: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "写入失败: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success"})
 }
 
-// 定义用于接收 POST (DeleteKey) 请求体的结构体
 type DeleteKeyRequest struct {
 	Key string `json:"key" binding:"required"`
 }
@@ -304,17 +275,14 @@ func deleteKey(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
 	chaincodeName := c.MustGet("chaincodeName").(string)
-
 	var req DeleteKeyRequest
-	// 从 JSON 请求体中绑定 key
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求体，需要 { \"key\": \"...\" }: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效请求: " + err.Error()})
 		return
 	}
-
 	_, err := gateway.DeleteKey(gw, channelName, chaincodeName, req.Key)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除数据失败: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除失败: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success"})

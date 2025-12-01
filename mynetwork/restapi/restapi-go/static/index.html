@@ -5,36 +5,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hyperledger Fabric 区块链浏览器</title>
-    <!-- 已去除 Google Fonts 引用，使用自带字体 -->
     <script src="/static/js/tailwindcss.js"></script>
     <script src="/static/js/vue.global.prod.js"></script>
     <script src="/static/js/chart.js"></script>
     <script>
-        // 配置 Tailwind 浅色科技主题
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         theme: {
-                            bg: '#f8fafc',        // Slate 50
-                            panel: '#ffffff',     // White
-                            primary: '#2563eb',   // Blue 600
-                            accent: '#9333ea',    // Purple 600
-                            success: '#059669',   // Emerald 600
-                            danger: '#dc2626',    // Red 600
-                            text: '#1e293b',      // Slate 800
-                            subtext: '#64748b',   // Slate 500
-                            border: '#e2e8f0'     // Slate 200
+                            bg: '#f8fafc', panel: '#ffffff', primary: '#2563eb', accent: '#9333ea',
+                            success: '#059669', danger: '#dc2626', text: '#1e293b', subtext: '#64748b', border: '#e2e8f0'
                         }
                     },
                     fontFamily: {
-                        // 使用系统默认字体栈
                         'sans': ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
                         'mono': ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
-                    },
-                    boxShadow: {
-                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-                        'glow': '0 0 15px rgba(37, 99, 235, 0.2)'
                     }
                 }
             }
@@ -43,24 +29,13 @@
     <style>
         body {
             background-color: #f8fafc;
-            background-image:
-                radial-gradient(#e2e8f0 1px, transparent 1px),
-                radial-gradient(#e2e8f0 1px, transparent 1px);
-            background-position: 0 0, 20px 20px;
-            background-size: 40px 40px;
             color: #1e293b;
-            /* 使用系统字体 */
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
         }
 
-        /* 滚动条 */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
         }
 
         ::-webkit-scrollbar-thumb {
@@ -68,24 +43,18 @@
             border-radius: 3px;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* 卡片面板 */
         .card-panel {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
         }
 
         .card-panel:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             border-color: #cbd5e1;
         }
 
-        /* 链条连接线 */
         .chain-link::after {
             content: '';
             position: absolute;
@@ -101,16 +70,13 @@
             display: none;
         }
 
-        /* 按钮 */
         .btn-primary {
             background: #2563eb;
             color: white;
-            transition: all 0.2s;
         }
 
         .btn-primary:hover {
             background: #1d4ed8;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
 
         .btn-ghost {
@@ -124,7 +90,11 @@
             color: #1e293b;
         }
 
-        /* 表格 */
+        .btn-ghost:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .table-row-hover:hover {
             background-color: #f8fafc;
         }
@@ -140,45 +110,29 @@
                 <div class="flex items-center space-x-3">
                     <div class="text-3xl text-theme-primary">⛓️</div>
                     <div>
-                        <h1 class="text-xl font-bold text-slate-800 tracking-tight">FABRIC EXPLORER</h1>
-                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Enterprise
-                            Blockchain Monitor</div>
+                        <h1 class="text-xl font-bold text-slate-800">FABRIC 区块链浏览器</h1>
+                        <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">企业级监控平台</div>
                     </div>
                 </div>
-
                 <nav class="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-lg">
                     <a href="#" @click.prevent="navigateTo('home')"
                         class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                        :class="currentPage === 'home' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
-                        首页概览
-                    </a>
+                        :class="currentPage === 'home' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">首页概览</a>
                     <a href="#" @click.prevent="navigateTo('nodes')"
                         class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                        :class="currentPage === 'nodes' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
-                        节点监控
-                    </a>
+                        :class="currentPage === 'nodes' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">节点监控</a>
                     <a href="#" @click.prevent="navigateTo('data')"
                         class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                        :class="currentPage === 'data' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
-                        链上数据
-                    </a>
+                        :class="currentPage === 'data' ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">链上数据</a>
                 </nav>
-
                 <div class="flex items-center space-x-4">
                     <div class="text-right hidden lg:block">
                         <div class="text-xs font-mono text-slate-600">{{ refreshStatus }}</div>
-                        <div class="text-[10px] text-theme-success font-bold flex items-center justify-end gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-theme-success animate-pulse"></span> SYSTEM ONLINE
-                        </div>
+                        <div class="text-[10px] text-theme-success font-bold flex items-center justify-end gap-1"><span
+                                class="w-1.5 h-1.5 rounded-full bg-theme-success animate-pulse"></span> 运行中</div>
                     </div>
                     <button @click="refreshCurrentPage"
-                        class="p-2 text-slate-500 hover:text-theme-primary hover:bg-blue-50 rounded-full transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                            </path>
-                        </svg>
-                    </button>
+                        class="p-2 text-slate-500 hover:text-theme-primary hover:bg-blue-50 rounded-full transition">↻</button>
                 </div>
             </div>
         </header>
@@ -186,11 +140,8 @@
         <!-- 主内容 -->
         <main class="flex-grow container mx-auto px-4 py-8 space-y-8">
 
-            <!-- 页面内容切换 -->
-
             <!-- HOME 页面 -->
             <div v-show="currentPage === 'home'" class="space-y-8">
-                <!-- 1. 关键指标卡片 -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div v-for="(item, key) in overviewItems" :key="key"
                         class="card-panel rounded-xl p-5 relative overflow-hidden group">
@@ -199,74 +150,46 @@
                             {{ item.icon }}</div>
                         <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{{ item.label }}
                         </div>
-                        <div
-                            class="text-3xl font-mono font-bold text-slate-800 group-hover:text-theme-primary transition-colors">
-                            {{ formatNumber(overview[item.key]) }}
+                        <div class="text-3xl font-mono font-bold text-slate-800">{{ formatNumber(overview[item.key]) }}
                         </div>
                     </div>
                 </div>
-
-                <!-- 2. 双图表区域：24小时趋势 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- 交易量 -->
                     <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                                <span class="w-1 h-5 bg-theme-primary rounded-full"></span>
-                                24小时交易趋势
-                            </h3>
-                            <span
-                                class="px-2 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded">Transactions</span>
-                        </div>
-                        <div class="flex-grow relative w-full">
-                            <canvas id="txChart"></canvas>
-                        </div>
+                        <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
+                                class="w-1 h-5 bg-theme-primary rounded-full"></span> 交易趋势 (最近50块)</h3>
+                        <div class="flex-grow relative w-full"><canvas id="txChart"></canvas></div>
                     </div>
-                    <!-- 出块量 -->
                     <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                                <span class="w-1 h-5 bg-theme-accent rounded-full"></span>
-                                24小时出块分布
-                            </h3>
-                            <span class="px-2 py-1 bg-purple-50 text-purple-600 text-xs font-bold rounded">Blocks</span>
-                        </div>
-                        <div class="flex-grow relative w-full">
-                            <canvas id="blockChart"></canvas>
-                        </div>
+                        <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
+                                class="w-1 h-5 bg-theme-accent rounded-full"></span> 出块分布 (最近50块)</h3>
+                        <div class="flex-grow relative w-full"><canvas id="blockChart"></canvas></div>
                     </div>
                 </div>
-
-                <!-- 3. 可视化区块链条 -->
+                <!-- 实时区块流 -->
                 <div class="card-panel rounded-xl p-0 overflow-hidden border-t-4 border-t-theme-primary">
                     <div class="bg-slate-50 px-6 py-3 border-b border-theme-border flex justify-between items-center">
-                        <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">
-                            <span class="text-lg">⛓️</span> 实时区块流 (Live Block Stream)
-                        </h3>
-                        <span class="text-xs text-slate-400">← Scroll Left/Right →</span>
+                        <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">⛓️ 实时区块流</h3>
                     </div>
                     <div class="overflow-x-auto custom-scrollbar p-8 bg-slate-50/50">
                         <div class="flex items-center space-x-8 min-w-max px-4">
-                            <div v-for="(block, idx) in trendBlocks" :key="block.blockNumber"
+                            <div v-for="block in trendBlocks" :key="block.blockNumber"
                                 class="chain-item relative group cursor-pointer"
                                 @click="showBlockDetail(block.blockNumber)">
                                 <div class="chain-link relative">
                                     <div
-                                        class="w-44 h-52 bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between 
-                                                shadow-sm hover:shadow-lg hover:border-theme-primary hover:-translate-y-1 transition-all duration-300 z-10 relative">
+                                        class="w-44 h-52 bg-white border border-slate-200 rounded-xl p-5 flex flex-col justify-between shadow-sm hover:shadow-lg hover:border-theme-primary hover:-translate-y-1 transition-all z-10 relative">
                                         <div class="flex justify-between items-start">
                                             <span class="text-2xl font-bold font-mono text-slate-800">#{{
                                                 block.blockNumber }}</span>
                                             <span
-                                                class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded-full">
-                                                {{ block.txCount }} Tx
-                                            </span>
+                                                class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded-full">{{
+                                                block.txCount }} 笔</span>
                                         </div>
                                         <div class="space-y-1">
-                                            <div class="text-[10px] text-slate-400 font-bold uppercase">Hash</div>
-                                            <div class="text-[10px] font-mono text-slate-600 break-all leading-tight">
-                                                {{ block.blockHash.substring(0, 16) }}...
-                                            </div>
+                                            <div class="text-[10px] text-slate-400 font-bold uppercase">哈希 (Hash)</div>
+                                            <div class="text-[10px] font-mono text-slate-600 break-all leading-tight">{{
+                                                block.blockHash.substring(0, 16) }}...</div>
                                         </div>
                                         <div
                                             class="pt-3 border-t border-slate-100 text-[10px] text-slate-400 font-mono flex justify-between">
@@ -280,23 +203,28 @@
                     </div>
                 </div>
 
-                <!-- 4. 区块列表 -->
+                <!-- 区块列表 (修改部分) -->
                 <div class="card-panel rounded-xl p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="font-bold text-slate-800 text-lg">区块账本记录</h2>
                         <div class="flex items-center space-x-2 text-sm">
                             <button @click="prevPage" :disabled="blockPage === 0"
-                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50">Previous</button>
-                            <span class="font-mono text-theme-primary font-bold">PAGE {{ blockPage + 1 }}</span>
+                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50">上一页</button>
+
+                            <!-- 修改：显示当前页 / 总页数 -->
+                            <span class="font-mono text-theme-primary font-bold">
+                                第 {{ blockPage + 1 }} 页 / 共 {{ Math.ceil((overview.blockHeight || 0) / pageSize) }} 页
+                            </span>
+
                             <button @click="nextPage" :disabled="(blockPage + 1) * pageSize >= overview.blockHeight"
-                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50">Next</button>
+                                class="btn-ghost px-3 py-1 rounded disabled:opacity-50">下一页</button>
                         </div>
                     </div>
                     <div class="overflow-x-auto border rounded-lg">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-theme-border">
                                 <tr>
-                                    <th class="p-4">区块高度</th>
+                                    <th class="p-4">区块号</th>
                                     <th class="p-4">哈希值</th>
                                     <th class="p-4 text-center">交易数</th>
                                     <th class="p-4">生成时间</th>
@@ -310,12 +238,9 @@
                                     <td class="p-4 font-bold text-theme-primary font-mono">#{{ block.blockNumber }}</td>
                                     <td class="p-4 font-mono text-xs text-slate-500">{{ block.blockHash.substring(0, 32)
                                         }}...</td>
-                                    <td class="p-4 text-center">
-                                        <span
-                                            class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-600">
-                                            {{ block.txCount }}
-                                        </span>
-                                    </td>
+                                    <td class="p-4 text-center"><span
+                                            class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-600">{{
+                                            block.txCount }}</span></td>
                                     <td class="p-4 font-mono text-xs">{{ formatTimestamp(block.timestamp) }}</td>
                                     <td class="p-4 text-right font-mono text-xs">{{ formatBytes(block.blockSize) }}</td>
                                 </tr>
@@ -325,51 +250,53 @@
                 </div>
             </div>
 
-            <!-- 区块详情页面 (全页模式) -->
+            <!-- 区块详情页面 -->
             <div v-show="currentPage === 'blockDetail'" class="space-y-6">
                 <div class="flex items-center justify-between">
                     <button @click="navigateTo('home')"
-                        class="btn-ghost px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold">
-                        <span>←</span> 返回首页
-                    </button>
+                        class="btn-ghost px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold"><span>←</span>
+                        返回首页</button>
                     <h2 class="text-xl font-bold text-slate-800">区块详情 <span class="text-theme-primary font-mono">#{{
                             blockDetail.blockNumber }}</span></h2>
                 </div>
-
                 <div class="card-panel rounded-xl p-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                         <div class="space-y-4">
                             <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">Block Hash</div>
+                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">区块哈希 (Block Hash)</div>
                                 <div class="font-mono text-sm text-slate-700 break-all select-all">{{
                                     blockDetail.blockHash }}</div>
                             </div>
+                            <div v-if="blockDetail.dataHash" class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">数据哈希 (Data Hash)</div>
+                                <div class="font-mono text-sm text-slate-700 break-all select-all">{{
+                                    blockDetail.dataHash }}</div>
+                            </div>
                             <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-theme-primary transition cursor-pointer"
                                 @click="navigateToPreviousBlock(blockDetail.previousHash)">
-                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">Previous Hash</div>
+                                <div class="text-xs font-bold text-slate-400 uppercase mb-1">前块哈希 (Previous Hash)</div>
                                 <div class="font-mono text-sm text-theme-primary break-all">{{ blockDetail.previousHash
                                     }}</div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="p-4 bg-blue-50/50 rounded-lg border border-blue-100">
-                                <div class="text-xs font-bold text-slate-400 uppercase">Transactions</div>
+                                <div class="text-xs font-bold text-slate-400 uppercase">交易数量</div>
                                 <div class="text-2xl font-bold text-theme-primary font-mono">{{ blockDetail.txCount }}
                                 </div>
                             </div>
                             <div class="p-4 bg-purple-50/50 rounded-lg border border-purple-100">
-                                <div class="text-xs font-bold text-slate-400 uppercase">Size</div>
+                                <div class="text-xs font-bold text-slate-400 uppercase">区块大小</div>
                                 <div class="text-2xl font-bold text-theme-accent font-mono">{{
                                     formatBytes(blockDetail.blockSize) }}</div>
                             </div>
                             <div class="col-span-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                <div class="text-xs font-bold text-slate-400 uppercase">Timestamp</div>
+                                <div class="text-xs font-bold text-slate-400 uppercase">生成时间</div>
                                 <div class="text-lg font-bold text-slate-700 font-mono">{{
                                     formatTimestamp(blockDetail.timestamp) }}</div>
                             </div>
                         </div>
                     </div>
-
                     <h3 class="font-bold text-slate-800 text-lg mb-4 border-b border-slate-200 pb-2">交易列表</h3>
                     <div class="space-y-3">
                         <div v-for="txId in blockDetail.txIds" :key="txId" @click="showTxDetail(txId)"
@@ -379,14 +306,13 @@
                             <span class="text-xs font-bold text-slate-400 group-hover:text-theme-primary">查看详情 →</span>
                         </div>
                         <div v-if="!blockDetail.txIds || blockDetail.txIds.length === 0"
-                            class="text-slate-400 italic text-center py-4">此区块无交易</div>
+                            class="text-slate-400 italic text-center py-4">无交易记录</div>
                     </div>
                 </div>
             </div>
 
             <!-- 节点监控页面 -->
             <div v-show="currentPage === 'nodes'" class="space-y-6">
-                <!-- 同样的控制栏，改为浅色风格 -->
                 <div class="card-panel rounded-xl p-4 flex flex-wrap gap-4 justify-between items-center">
                     <div class="flex space-x-1 bg-slate-100 p-1 rounded-lg">
                         <button @click="switchNodeTab('cpu')"
@@ -397,26 +323,26 @@
                             class="px-6 py-1.5 rounded-md text-sm font-bold transition">内存</button>
                     </div>
                     <div class="flex gap-4 text-sm">
-                        <select v-model="timeRange"
+                        <select v-model="timeRange" @change="forceRefreshNode"
                             class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 outline-none">
                             <option value="1">最近 1 分钟</option>
                             <option value="5">最近 5 分钟</option>
                             <option value="30">最近 30 分钟</option>
                         </select>
-                        <select v-model="refreshRate"
+                        <select v-model="refreshRate" @change="startNodeRefresh"
                             class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 outline-none">
+                            <option value="3">3s 刷新</option>
                             <option value="5">5s 刷新</option>
-                            <option value="0">停止</option>
+                            <option value="0">停止刷新</option>
                         </select>
                     </div>
                 </div>
-                <!-- 图表网格 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     <div v-for="(node, name) in (nodeTab === 'cpu' ? cpuNodes : memoryNodes)" :key="name"
                         class="card-panel rounded-xl p-6 border-t-4"
                         :class="nodeTab === 'cpu' ? 'border-t-theme-primary' : 'border-t-theme-accent'">
                         <div class="flex justify-between items-start mb-4">
-                            <h3 class="font-bold text-slate-700">{{ name }}</h3>
+                            <h3 class="font-bold text-slate-700 truncate" :title="name">{{ name }}</h3>
                             <div class="text-right">
                                 <div class="text-3xl font-mono font-bold" :class="getUsageColor(node.latestUsage)">{{
                                     node.latestUsage.toFixed(1) }}%</div>
@@ -429,25 +355,39 @@
                 </div>
             </div>
 
-            <!-- 数据展示页面 -->
+            <!-- 链上数据页面 -->
             <div v-show="currentPage === 'data'" class="space-y-6">
-                <div class="card-panel rounded-xl p-5 flex gap-4 justify-between">
-                    <input v-model="searchTerm" @keyup.enter="filterChainData" type="text"
-                        placeholder="搜索 Key 或 Value..."
-                        class="flex-grow bg-slate-50 border border-slate-200 rounded-lg py-2 pl-4 text-slate-700 focus:ring-2 focus:ring-theme-primary outline-none">
-                    <button @click="showAddDataModal" class="btn-primary px-6 py-2 rounded-lg font-bold shadow-md">+
-                        新增数据</button>
+                <div class="card-panel rounded-xl p-5 flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div class="flex flex-grow w-full md:w-auto gap-2">
+                        <input v-model="searchTerm" @keyup.enter="filterChainData" type="text"
+                            placeholder="搜索当前页键名 (Key)..."
+                            class="flex-grow bg-slate-50 border border-slate-200 rounded-lg py-2 pl-4 text-slate-700 focus:ring-2 focus:ring-theme-primary outline-none text-sm">
+                        <button @click="showAddDataModal"
+                            class="btn-primary px-4 py-2 rounded-lg font-bold shadow-md whitespace-nowrap text-sm">+
+                            新增</button>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm bg-slate-50 p-1 rounded-lg border border-slate-100">
+                        <button @click="prevDataPage" :disabled="dataPageNum === 0"
+                            class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">上一页</button>
+                        <span class="font-mono text-theme-primary font-bold px-1">第 {{ dataPageNum + 1 }} 页</span>
+                        <button @click="nextDataPage" :disabled="chainData.length < dataPageSize"
+                            class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">下一页</button>
+                    </div>
                 </div>
+
                 <div class="card-panel rounded-xl p-6 overflow-hidden">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                             <tr>
-                                <th class="p-4 w-1/4">Key</th>
-                                <th class="p-4 w-1/2">Value</th>
+                                <th class="p-4 w-1/4">键名 (Key)</th>
+                                <th class="p-4 w-1/2">键值 (Value)</th>
                                 <th class="p-4 text-right">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
+                            <tr v-if="filteredData.length === 0">
+                                <td colspan="3" class="p-8 text-center text-slate-400 italic">暂无数据或数据为空</td>
+                            </tr>
                             <tr v-for="(item, idx) in filteredData" :key="item.key" class="table-row-hover">
                                 <td class="p-4 font-mono font-bold text-theme-primary align-top">{{ item.key }}</td>
                                 <td class="p-4 align-top text-slate-600">
@@ -472,10 +412,9 @@
                     </table>
                 </div>
             </div>
-
         </main>
 
-        <!-- 弹窗 (Modal) -->
+        <!-- Modals -->
         <div v-if="showHistoryModal || showTxModal || showAddModal"
             class="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="closeAllModals"></div>
@@ -495,65 +434,101 @@
                     </div>
                     <div v-else-if="txDetail" class="space-y-6">
                         <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div class="p-3 bg-slate-50 rounded border border-slate-100">
-                                <div class="text-xs text-slate-400 font-bold uppercase">Tx ID</div>
-                                <div class="font-mono text-slate-700 break-all font-bold">{{ txDetail.TxId }}</div>
+                            <div class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
+                                <div class="text-xs text-slate-400 font-bold uppercase">交易 ID (Tx ID)</div>
+                                <div class="font-mono text-slate-700 break-all font-bold select-all">{{ txDetail.TxId }}
+                                </div>
                             </div>
                             <div class="p-3 bg-slate-50 rounded border border-slate-100">
-                                <div class="text-xs text-slate-400 font-bold uppercase">Time</div>
+                                <div class="text-xs text-slate-400 font-bold uppercase">时间 (Time)</div>
                                 <div class="text-slate-700 font-bold">{{ formatTimestamp(txDetail.Timestamp) }}</div>
                             </div>
-                            <div class="p-3 bg-slate-50 rounded border border-slate-100">
-                                <div class="text-xs text-slate-400 font-bold uppercase">Channel</div>
+                            <div class="p-3 bg-green-50 rounded border border-green-100">
+                                <div class="text-xs text-green-600 font-bold uppercase">状态 (Status)</div>
+                                <div class="text-green-700 font-bold">有效 ({{ txDetail.ValidationCode }})</div>
+                            </div>
+                            <div v-if="txDetail.CreatorMSP" class="p-3 bg-slate-50 rounded border border-slate-100">
+                                <div class="text-xs text-slate-400 font-bold uppercase">创建者 MSP</div>
+                                <div class="text-slate-700 font-bold">{{ txDetail.CreatorMSP }}</div>
+                            </div>
+                            <div v-if="txDetail.ChannelId" class="p-3 bg-slate-50 rounded border border-slate-100">
+                                <div class="text-xs text-slate-400 font-bold uppercase">通道 (Channel)</div>
                                 <div class="text-slate-700 font-bold">{{ txDetail.ChannelId }}</div>
                             </div>
-                            <div class="p-3 bg-green-50 rounded border border-green-100">
-                                <div class="text-xs text-green-600 font-bold uppercase">Status</div>
-                                <div class="text-green-700 font-bold">VALID ({{ txDetail.ValidationCode }})</div>
+                        </div>
+
+                        <div v-if="txDetail.ChainCodeInfos && txDetail.ChainCodeInfos.length > 0">
+                            <h4 class="font-bold text-slate-800 border-l-4 border-theme-primary pl-3 mb-2">链码调用</h4>
+                            <div v-for="cc in txDetail.ChainCodeInfos" :key="cc.ChainCodeName"
+                                class="bg-slate-50 p-4 rounded border border-slate-200 mb-2">
+                                <div class="text-theme-primary font-bold mb-2">{{ cc.ChainCodeName }}</div>
+                                <div v-for="(arg, i) in cc.Args" :key="i"
+                                    class="text-xs font-mono text-slate-600 bg-white p-2 rounded mb-1 border border-slate-200 break-all">
+                                    <span class="text-slate-400 mr-2 select-none">参数[{{i}}]</span>{{ arg }}
+                                </div>
                             </div>
                         </div>
-                        <h4 class="font-bold text-slate-800 border-l-4 border-theme-primary pl-3">链码调用参数</h4>
-                        <div v-for="cc in txDetail.ChainCodeInfos" :key="cc.ChainCodeName"
-                            class="bg-slate-50 p-4 rounded border border-slate-200">
-                            <div class="text-theme-primary font-bold mb-2">{{ cc.ChainCodeName }}</div>
-                            <div v-for="(arg, i) in cc.Args" :key="i"
-                                class="text-xs font-mono text-slate-600 bg-white p-2 rounded mb-1 border border-slate-200 break-all">
-                                <span class="text-slate-400 mr-2 select-none">Arg[{{i}}]</span>{{ arg }}
+
+                        <div v-if="txDetail.Writes && txDetail.Writes.length > 0">
+                            <h4 class="font-bold text-slate-800 border-l-4 border-theme-accent pl-3 mb-2">读写集 (Write
+                                Set)</h4>
+                            <div class="bg-slate-50 rounded border border-slate-200 overflow-hidden">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-slate-100 text-slate-500 font-bold">
+                                        <tr>
+                                            <th class="p-2">键 (Key)</th>
+                                            <th class="p-2">值 (预览)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200">
+                                        <tr v-for="(w, idx) in txDetail.Writes" :key="idx">
+                                            <td class="p-2 font-mono text-theme-primary font-bold">{{ w.key }}</td>
+                                            <td class="p-2 font-mono text-xs text-slate-600 truncate max-w-xs">{{
+                                                w.value }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div v-if="txDetail.Endorsers && txDetail.Endorsers.length > 0">
+                            <h4 class="font-bold text-slate-800 border-l-4 border-slate-400 pl-3 mb-2">背书节点</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <span v-for="endorser in txDetail.Endorsers" :key="endorser"
+                                    class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{{
+                                    endorser }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 数据上链 Modal -->
+            <!-- Add Data Modal -->
             <div v-if="showAddModal" class="bg-white w-full max-w-lg rounded-xl shadow-2xl z-10 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                     <h3 class="font-bold text-lg text-theme-success">新数据上链</h3>
                     <button @click="showAddModal=false" class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                 </div>
                 <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">KEY</label>
-                        <input v-model="newKey"
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">键名 (KEY)</label><input
+                            v-model="newKey"
                             class="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-theme-success outline-none">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">VALUE (JSON)</label>
-                        <textarea v-model="newValue" rows="5"
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">键值 (VALUE JSON)</label><textarea
+                            v-model="newValue" rows="5"
                             class="w-full border border-slate-300 rounded p-2 font-mono text-sm focus:ring-2 focus:ring-theme-success outline-none"></textarea>
                     </div>
                     <button @click="submitData" :disabled="addSubmitting"
-                        class="w-full bg-theme-success text-white py-2 rounded font-bold hover:bg-emerald-700 transition disabled:opacity-50">
-                        {{ addSubmitting ? '提交中...' : '提交上链' }}
-                    </button>
+                        class="w-full bg-theme-success text-white py-2 rounded font-bold hover:bg-emerald-700 transition disabled:opacity-50">{{
+                        addSubmitting ? '提交中...' : '提交上链' }}</button>
                 </div>
             </div>
 
-            <!-- 历史记录 Modal -->
+            <!-- History Modal -->
             <div v-if="showHistoryModal"
                 class="bg-white w-full max-w-4xl max-h-[80vh] flex flex-col rounded-xl shadow-2xl z-10 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 class="font-bold text-lg text-slate-800">历史记录: <span class="font-mono text-theme-primary">{{
+                    <h3 class="font-bold text-lg text-slate-800">键值历史: <span class="font-mono text-theme-primary">{{
                             historyKey }}</span></h3>
                     <button @click="showHistoryModal=false"
                         class="text-slate-400 hover:text-slate-600 text-2xl">×</button>
@@ -562,10 +537,10 @@
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 text-slate-500 sticky top-0">
                             <tr>
-                                <th class="p-3">Tx ID</th>
-                                <th class="p-3">Time</th>
-                                <th class="p-3">Value</th>
-                                <th class="p-3">Type</th>
+                                <th class="p-3">交易 ID</th>
+                                <th class="p-3">时间</th>
+                                <th class="p-3">值</th>
+                                <th class="p-3">类型</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-slate-700">
@@ -576,22 +551,20 @@
                                 <td class="p-3 font-mono text-xs">{{ truncateText(h.value, 40) }}</td>
                                 <td class="p-3"><span class="font-bold text-xs px-2 py-1 rounded"
                                         :class="h.isDelete ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'">{{
-                                        h.isDelete ? 'DEL' : 'PUT' }}</span></td>
+                                        h.isDelete ? '删除' : '写入' }}</span></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
-        const { createApp, ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } = Vue;
+        const { createApp, ref, reactive, nextTick, onMounted, onUnmounted } = Vue;
 
         createApp({
             setup() {
-                // 1. 状态定义
                 const currentPage = ref('home');
                 const blockPage = ref(0);
                 const pageSize = ref(10);
@@ -606,6 +579,8 @@
                 const memoryNodes = reactive({});
                 const cpuCharts = {};
                 const memoryCharts = {};
+                const dataPageNum = ref(0);
+                const dataPageSize = ref(10);
                 const chainData = ref([]);
                 const filteredData = ref([]);
                 const searchTerm = ref('');
@@ -616,11 +591,11 @@
                 const txLoading = ref(false);
                 const historyKey = ref('');
                 const historyData = ref([]);
-                const historyLoading = ref(false);
                 const newKey = ref('');
                 const newValue = ref('');
                 const addSubmitting = ref(false);
                 const blockDetail = reactive({});
+
                 let txChart = null;
                 let blockChart = null;
                 let homeTimer = null;
@@ -634,193 +609,223 @@
                     nodeCount: { label: '活跃节点', key: 'nodeCount', icon: '🖥️' }
                 };
 
-                // --- 逻辑方法 ---
-
-                // 加载 24小时 趋势数据
-                const loadTrendData = async () => {
+                const refreshNodeData = async () => {
+                    const currentTab = nodeTab.value;
+                    const url = currentTab === 'cpu' ? '/valuechain/cpuHistory' : '/valuechain/memoryHistory';
                     try {
-                        const res = await fetch('/valuechain/blocks?pageNum=0&pageSize=1000');
-                        if (res.ok) {
-                            const data = await res.json();
-                            trendBlocks.value = data.slice(0, 50);
-                            processTrendData(data);
-                        }
-                    } catch (e) { console.error(e); }
+                        const res = await fetch(url);
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        const targetNodes = currentTab === 'cpu' ? cpuNodes : memoryNodes;
+                        const targetCharts = currentTab === 'cpu' ? cpuCharts : memoryCharts;
+                        const cutoffTime = Date.now() - (parseInt(timeRange.value) * 60 * 1000);
+
+                        Object.keys(data).forEach(name => {
+                            const fullHist = data[name] || [];
+                            const last = fullHist[fullHist.length - 1] || {};
+                            let val = 0;
+                            if (currentTab === 'cpu') {
+                                val = last.CPUUsage || 0;
+                            } else {
+                                if (last.TotalMemory && last.TotalMemory > 0) {
+                                    val = (last.UsedMemory / last.TotalMemory) * 100;
+                                }
+                            }
+                            targetNodes[name] = { latestUsage: val };
+                        });
+
+                        nextTick(() => {
+                            if (nodeTab.value !== currentTab) return;
+                            Object.keys(data).forEach(name => {
+                                const fullHist = data[name] || [];
+                                const filteredHist = fullHist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
+                                const labels = filteredHist.map(d => new Date(d.Timestamp).toLocaleTimeString());
+                                const values = filteredHist.map(d => {
+                                    if (currentTab === 'cpu') return d.CPUUsage || 0;
+                                    return (d.TotalMemory > 0) ? (d.UsedMemory / d.TotalMemory) * 100 : 0;
+                                });
+
+                                const maxVal = Math.max(...values, 0);
+                                let suggestedMax = Math.ceil(maxVal / 10) * 10;
+                                if (suggestedMax < 10) suggestedMax = 10;
+                                if (suggestedMax > 100) suggestedMax = 100;
+
+                                const ctxId = `${currentTab}-chart-${name}`;
+                                const ctx = document.getElementById(ctxId);
+
+                                if (ctx) {
+                                    if (targetCharts[name]) {
+                                        targetCharts[name].data.labels = labels;
+                                        targetCharts[name].data.datasets[0].data = values;
+                                        targetCharts[name].options.scales.y.max = suggestedMax;
+                                        targetCharts[name].update('none');
+                                    } else {
+                                        const chartInstance = Chart.getChart(ctx);
+                                        if (chartInstance) chartInstance.destroy();
+                                        const color = currentTab === 'cpu' ? '#2563eb' : '#9333ea';
+                                        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 200);
+                                        gradient.addColorStop(0, currentTab === 'cpu' ? 'rgba(37, 99, 235, 0.2)' : 'rgba(147, 51, 234, 0.2)');
+                                        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                                        targetCharts[name] = new Chart(ctx, {
+                                            type: 'line',
+                                            data: {
+                                                labels: labels,
+                                                datasets: [{
+                                                    data: values, borderColor: color, backgroundColor: gradient,
+                                                    borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: true, tension: 0.2
+                                                }]
+                                            },
+                                            options: {
+                                                responsive: true, maintainAspectRatio: false, animation: false,
+                                                interaction: { intersect: false, mode: 'index' },
+                                                plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                                                scales: {
+                                                    x: { display: false },
+                                                    y: { display: true, min: 0, max: suggestedMax, ticks: { stepSize: 10, color: '#94a3b8', font: { size: 10 } }, grid: { color: '#f1f5f9' } }
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                    } catch (e) { console.error("Monitor Error:", e); }
                 };
 
-                const processTrendData = (rawBlocks) => {
-                    const labels = [];
-                    const now = new Date();
-                    now.setMinutes(0, 0, 0);
-                    const buckets = {};
-                    for (let i = 23; i >= 0; i--) {
-                        const d = new Date(now.getTime() - i * 3600000);
-                        const label = `${d.getHours().toString().padStart(2, '0')}:00`;
-                        labels.push(label);
-                        buckets[`${d.getDate()}-${d.getHours()}`] = { tx: 0, blk: 0 };
-                    }
-                    rawBlocks.forEach(b => {
-                        const bd = new Date(b.timestamp);
-                        const key = `${bd.getDate()}-${bd.getHours()}`;
-                        if (buckets[key]) {
-                            buckets[key].blk++;
-                            buckets[key].tx += b.txCount;
-                        }
-                    });
-                    const txData = [];
-                    const blkData = [];
-                    for (let i = 23; i >= 0; i--) {
-                        const d = new Date(now.getTime() - i * 3600000);
-                        const key = `${d.getDate()}-${d.getHours()}`;
-                        txData.push(buckets[key]?.tx || 0);
-                        blkData.push(buckets[key]?.blk || 0);
-                    }
-                    updateCharts(labels, txData, blkData);
+                const startNodeRefresh = () => {
+                    clearInterval(nodeTimer);
+                    if (refreshRate.value > 0) nodeTimer = setInterval(refreshNodeData, refreshRate.value * 1000);
                 };
 
-                const updateCharts = (labels, txData, blkData) => {
-                    const txCtx = document.getElementById('txChart');
-                    const blkCtx = document.getElementById('blockChart');
-                    if (!txCtx || !blkCtx) return;
-
-                    // 浅色主题：蓝色渐变
-                    const txCtx2d = txCtx.getContext('2d');
-                    const gradTx = txCtx2d.createLinearGradient(0, 0, 0, 300);
-                    gradTx.addColorStop(0, 'rgba(37, 99, 235, 0.5)'); // Blue
-                    gradTx.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
-
-                    if (txChart) txChart.destroy();
-                    txChart = new Chart(txCtx2d, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: '交易数',
-                                data: txData,
-                                borderColor: '#2563eb', // Blue 600
-                                backgroundColor: gradTx,
-                                borderWidth: 2,
-                                tension: 0.4,
-                                fill: true,
-                                pointRadius: 2
-                            }]
-                        },
-                        options: getLightChartOptions()
-                    });
-
-                    if (blockChart) blockChart.destroy();
-                    blockChart = new Chart(blkCtx.getContext('2d'), {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: '出块数',
-                                data: blkData,
-                                backgroundColor: '#9333ea', // Purple 600
-                                borderRadius: 3
-                            }]
-                        },
-                        options: getLightChartOptions()
-                    });
+                const switchNodeTab = (t) => {
+                    if (nodeTab.value === t) return;
+                    clearInterval(nodeTimer);
+                    const oldCharts = nodeTab.value === 'cpu' ? cpuCharts : memoryCharts;
+                    Object.values(oldCharts).forEach(c => c.destroy());
+                    if (nodeTab.value === 'cpu') {
+                        for (const key in cpuCharts) delete cpuCharts[key];
+                    } else {
+                        for (const key in memoryCharts) delete memoryCharts[key];
+                    }
+                    nodeTab.value = t;
+                    nextTick(() => { refreshNodeData(); startNodeRefresh(); });
                 };
 
-                const getLightChartOptions = () => ({
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 12 } },
-                        y: { grid: { color: '#e2e8f0', borderDash: [4, 4] }, ticks: { color: '#64748b' }, beginAtZero: true }
-                    }
-                });
+                const forceRefreshNode = () => { nextTick(refreshNodeData); };
 
-                // 页面切换与刷新
                 const navigateTo = (page) => {
                     currentPage.value = page;
                     if (page === 'home') refreshHomeData();
-                    if (page === 'nodes') nextTick(() => { refreshNodeData(); startNodeRefresh(); });
+                    if (page === 'nodes') { nextTick(() => { refreshNodeData(); startNodeRefresh(); }); } else { clearInterval(nodeTimer); }
                     if (page === 'data') loadChainData();
                 };
+
                 const refreshCurrentPage = () => {
                     if (currentPage.value === 'home') refreshHomeData();
                     else if (currentPage.value === 'nodes') refreshNodeData();
                     else if (currentPage.value === 'data') loadChainData();
                 };
-                const refreshHomeData = async () => {
-                    await Promise.all([loadOverviewData(), loadBlocks(), loadTrendData()]);
-                    refreshStatus.value = new Date().toLocaleTimeString('zh-CN');
-                };
+
+                const refreshHomeData = async () => { await Promise.all([loadOverviewData(), loadBlocks(), loadTrendData()]); refreshStatus.value = new Date().toLocaleTimeString('zh-CN'); };
                 const loadOverviewData = async () => { try { const r = await fetch('/valuechain/info'); if (r.ok) Object.assign(overview, await r.json()); } catch (e) { } };
-                const loadBlocks = async () => { try { const r = await fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize.value}`); if (r.ok) blocks.value = await r.json(); } catch (e) { } };
+                const loadBlocks = async () => { try { const r = await fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize.value}`); if (r.ok) blocks.value = (await r.json()).blockPage || []; } catch (e) { } };
 
-                // 节点监控
-                const refreshNodeData = async () => {
-                    const url = nodeTab.value === 'cpu' ? '/valuechain/cpuHistory' : '/valuechain/memoryHistory';
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    const targetNodes = nodeTab.value === 'cpu' ? cpuNodes : memoryNodes;
-                    const charts = nodeTab.value === 'cpu' ? cpuCharts : memoryCharts;
-                    for (let k in targetNodes) delete targetNodes[k];
+                const loadTrendData = async () => {
+                    try {
+                        const res = await fetch('/valuechain/trend'); // 替换原来的大数据量请求
+                        if (res.ok) {
+                            const data = await res.json();
+                            trendBlocks.value = data.blockPage || [];
+                            processTrendCharts(data.blockPage || []);
+                        }
+                    } catch (e) { }
+                };
 
-                    Object.keys(data).forEach(name => {
-                        const hist = data[name] || [];
-                        const last = hist[hist.length - 1] || {};
-                        const val = nodeTab.value === 'cpu' ? (last.CPUUsage || 0) : ((last.UsedMemory / last.TotalMemory) * 100 || 0);
-                        targetNodes[name] = { latestUsage: val };
-
-                        nextTick(() => {
-                            const ctx = document.getElementById(`${nodeTab.value}-chart-${name}`);
-                            if (ctx) {
-                                if (charts[name]) charts[name].destroy();
-                                charts[name] = new Chart(ctx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: hist.map(d => new Date(d.Timestamp).toLocaleTimeString()),
-                                        datasets: [{
-                                            data: hist.map(d => nodeTab.value === 'cpu' ? d.CPUUsage : (d.UsedMemory / d.TotalMemory) * 100),
-                                            borderColor: nodeTab.value === 'cpu' ? '#2563eb' : '#9333ea',
-                                            borderWidth: 1.5,
-                                            pointRadius: 0,
-                                            tension: 0.3
-                                        }]
-                                    },
-                                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: { display: false }, y: { display: false, min: 0, max: 100 } } }
-                                });
-                            }
-                        });
+                const processTrendCharts = (rawBlocks) => {
+                    const labels = []; const now = new Date(); now.setMinutes(0, 0, 0);
+                    const buckets = {};
+                    for (let i = 23; i >= 0; i--) {
+                        const d = new Date(now.getTime() - i * 3600000);
+                        const k = `${d.getDate()}-${d.getHours()}`;
+                        labels.push(`${d.getHours()}:00`);
+                        buckets[k] = { tx: 0, blk: 0 };
+                    }
+                    rawBlocks.forEach(b => {
+                        const d = new Date(b.timestamp);
+                        const k = `${d.getDate()}-${d.getHours()}`;
+                        if (buckets[k]) { buckets[k].blk++; buckets[k].tx += b.txCount; }
                     });
+                    const txData = Object.values(buckets).map(v => v.tx);
+                    const blkData = Object.values(buckets).map(v => v.blk);
+                    const ctxTx = document.getElementById('txChart');
+                    const ctxBlk = document.getElementById('blockChart');
+                    if (ctxTx && ctxBlk) {
+                        if (txChart) txChart.destroy();
+                        if (blockChart) blockChart.destroy();
+                        const grad = ctxTx.getContext('2d').createLinearGradient(0, 0, 0, 300);
+                        grad.addColorStop(0, 'rgba(37, 99, 235, 0.5)'); grad.addColorStop(1, 'rgba(37, 99, 235, 0)');
+                        txChart = new Chart(ctxTx, { type: 'line', data: { labels, datasets: [{ data: txData, borderColor: '#2563eb', backgroundColor: grad, fill: true, tension: 0.4, pointRadius: 0 }] }, options: getHomeChartOpts() });
+                        blockChart = new Chart(ctxBlk, { type: 'bar', data: { labels, datasets: [{ data: blkData, backgroundColor: '#9333ea', borderRadius: 3 }] }, options: getHomeChartOpts() });
+                    }
                 };
-                const startNodeRefresh = () => { clearInterval(nodeTimer); if (refreshRate.value > 0) nodeTimer = setInterval(refreshNodeData, refreshRate.value * 1000); };
-                const switchNodeTab = (t) => { nodeTab.value = t; nextTick(refreshNodeData); };
+                const getHomeChartOpts = () => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#e2e8f0', borderDash: [4, 4] } } } });
 
-                // 详情与交互
-                const showBlockDetail = async (bn) => {
-                    const r = await fetch(`/valuechain/block?blockNum=${bn}`);
-                    Object.assign(blockDetail, await r.json());
-                    currentPage.value = 'blockDetail';
-                };
+                const showBlockDetail = async (bn) => { const r = await fetch(`/valuechain/block?blockNum=${bn}`); Object.assign(blockDetail, await r.json()); currentPage.value = 'blockDetail'; };
                 const navigateToPreviousBlock = (ph) => { if (ph && !ph.startsWith('0000')) showBlockDetail(blockDetail.blockNumber - 1); };
                 const showTxDetail = async (tid) => { txLoading.value = true; showTxModal.value = true; const r = await fetch(`/valuechain/transaction?txID=${tid}`); txDetail.value = await r.json(); txLoading.value = false; };
-                const closeAllModals = () => { showTxModal.value = false; showAddModal.value = false; showHistoryModal.value = false; };
 
-                // 数据管理
-                const loadChainData = async () => { const r = await fetch('/valuechain/data/all'); chainData.value = await r.json(); filterChainData(); };
+                const loadChainData = async () => {
+                    try {
+                        const r = await fetch(`/valuechain/data/all?pageNum=${dataPageNum.value}&pageSize=${dataPageSize.value}`);
+                        if (r.ok) {
+                            const res = await r.json();
+                            chainData.value = res.results || [];
+                            filterChainData();
+                        }
+                    } catch (e) { console.error("Load Data Error", e); }
+                };
+
                 const filterChainData = () => {
-                    filteredData.value = (!searchTerm.value) ? chainData.value : chainData.value.filter(i => i.key.includes(searchTerm.value));
-                    filteredData.value = filteredData.value.map(i => ({
-                        ...i, isJson: i.value.startsWith('{'), formattedValue: i.value.startsWith('{') ? JSON.stringify(JSON.parse(i.value), null, 2) : i.value, collapsed: true
+                    let dataToFilter = chainData.value;
+                    if (searchTerm.value) {
+                        dataToFilter = chainData.value.filter(i => i.key.includes(searchTerm.value));
+                    }
+                    filteredData.value = dataToFilter.map(i => ({
+                        ...i,
+                        isJson: i.value && i.value.trim().startsWith('{'),
+                        formattedValue: i.value && i.value.trim().startsWith('{') ? tryFormatJson(i.value) : i.value,
+                        collapsed: true
                     }));
                 };
+
+                const tryFormatJson = (str) => {
+                    try { return JSON.stringify(JSON.parse(str), null, 2); } catch (e) { return str; }
+                };
+
+                const prevDataPage = () => { if (dataPageNum.value > 0) { dataPageNum.value--; loadChainData(); } };
+                const nextDataPage = () => { if (chainData.value.length === dataPageSize.value) { dataPageNum.value++; loadChainData(); } };
                 const toggleJsonDisplay = i => filteredData.value[i].collapsed = !filteredData.value[i].collapsed;
                 const showAddDataModal = () => { newKey.value = ''; newValue.value = ''; showAddModal.value = true; };
-                const submitData = async () => { addSubmitting.value = true; await fetch('/valuechain/data', { method: 'POST', body: JSON.stringify({ key: newKey.value, value: newValue.value }) }); showAddModal.value = false; addSubmitting.value = false; loadChainData(); };
-                const deleteKey = async (k) => { if (confirm('确认删除?')) { await fetch('/valuechain/data/delete', { method: 'POST', body: JSON.stringify({ key: k }) }); loadChainData(); } };
-                const showKeyHistory = async (k) => { historyKey.value = k; showHistoryModal.value = true; historyLoading.value = true; const r = await fetch(`/valuechain/data/history?key=${k}`); historyData.value = await r.json(); historyLoading.value = false; };
+                const submitData = async () => {
+                    addSubmitting.value = true;
+                    await fetch('/valuechain/data', { method: 'POST', body: JSON.stringify({ key: newKey.value, value: newValue.value }) });
+                    showAddModal.value = false;
+                    addSubmitting.value = false;
+                    loadChainData();
+                };
+                const deleteKey = async (k) => {
+                    if (confirm('确认删除该键值 (Key)?')) {
+                        await fetch('/valuechain/data/delete', { method: 'POST', body: JSON.stringify({ key: k }) });
+                        loadChainData();
+                    }
+                };
+                const showKeyHistory = async (k) => { historyKey.value = k; showHistoryModal.value = true; const r = await fetch(`/valuechain/data/history?key=${k}`); historyData.value = await r.json(); };
+                const closeAllModals = () => { showTxModal.value = false; showAddModal.value = false; showHistoryModal.value = false; };
 
-                // 工具
                 const formatNumber = n => n ? n.toLocaleString() : 0;
                 const formatTimestamp = t => t ? new Date(t).toLocaleString('zh-CN') : '-';
-                const formatBytes = b => { if (!b) return '0 B'; const u = ['B', 'KB', 'MB']; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(2)} ${u[i]}`; };
+                const formatBytes = b => { if (!b) return '0 B'; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(2)} ${['B', 'KB', 'MB'][i]}`; };
                 const getUsageColor = v => v > 80 ? 'text-red-600' : (v > 50 ? 'text-yellow-500' : 'text-green-600');
                 const truncateText = (t, l) => t && t.length > l ? t.substring(0, l) + '...' : t;
                 const prevPage = () => { if (blockPage.value > 0) { blockPage.value--; loadBlocks(); } };
@@ -831,12 +836,14 @@
 
                 return {
                     currentPage, overview, overviewItems, blocks, trendBlocks, blockPage, pageSize, refreshStatus,
-                    nodeTab, timeRange, refreshRate, cpuNodes, memoryNodes, chainData, filteredData, searchTerm,
-                    showTxModal, showAddModal, showHistoryModal, txDetail, txLoading, historyKey, historyData, historyLoading,
+                    nodeTab, timeRange, refreshRate, cpuNodes, memoryNodes,
+                    dataPageNum, dataPageSize, prevDataPage, nextDataPage,
+                    chainData, filteredData, searchTerm,
+                    showTxModal, showAddModal, showHistoryModal, txDetail, txLoading, historyKey, historyData,
                     newKey, newValue, addSubmitting, blockDetail,
                     navigateTo, refreshCurrentPage, showBlockDetail, showTxDetail, navigateToPreviousBlock,
                     switchNodeTab, showAddDataModal, submitData, deleteKey, showKeyHistory, toggleJsonDisplay,
-                    prevPage, nextPage, closeAllModals, filterChainData, loadChainData,
+                    prevPage, nextPage, closeAllModals, filterChainData, loadChainData, refreshNodeData, startNodeRefresh, forceRefreshNode,
                     formatNumber, formatTimestamp, formatBytes, getUsageColor, truncateText
                 };
             }

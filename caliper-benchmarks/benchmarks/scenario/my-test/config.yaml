@@ -6,20 +6,20 @@ test:
   rounds:
     - label: write-phase
       description: Test PutValue performance
-      txNumber: 1000  # 测试 20 笔交易
+      txNumber: 500  # 测试 20 笔交易
       rateControl:
         type: fixed-rate
         opts:
-          tps: 500
+          tps: 100
       workload:
         module: benchmarks/scenario/my-test/write.js
 
     - label: read-phase
       description: Test QueryByKey performance
-      txNumber: 1000
+      txNumber: 500
       rateControl:
         type: fixed-rate
         opts:
-          tps: 500
+          tps: 100
       workload:
         module: benchmarks/scenario/my-test/read.js

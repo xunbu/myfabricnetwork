@@ -3,6 +3,7 @@ package chaincode
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/v2/contractapi"
@@ -76,6 +77,43 @@ func (s *SmartContract) QueryByRich(ctx contractapi.TransactionContextInterface,
 		}
 		result := QueryRichResult{Key: queryResponse.Key, Value: string(queryResponse.Value)}
 		results = append(results, result)
+	}
+	return results, nil
+}
+
+func (s *SmartContract) QueryByRichWithLimit(ctx contractapi.TransactionContextInterface, richQuery string, limit_string string) ([]QueryRichResult, error) {
+
+	resultsIterator, err := ctx.GetStub().GetQueryResult(richQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+	limit, err := strconv.Atoi(limit_string)
+	if err != nil {
+		return nil, err
+	}
+	var results []QueryRichResult
+	counter := 0
+
+	for resultsIterator.HasNext() {
+		// 如果传入的 limit 大于 0，且当前计数已达到 limit，强制退出循环
+		if limit > 0 && counter >= limit {
+			break
+		}
+
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		result := QueryRichResult{
+			Key:   queryResponse.Key,
+			Value: string(queryResponse.Value),
+		}
+		results = append(results, result)
+
+		// 计数器累加
+		counter++
 	}
 	return results, nil
 }
