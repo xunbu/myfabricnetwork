@@ -21,9 +21,9 @@ organizations:
       certificates:
       - name: 'User1'
         clientPrivateKey:
-          path: 'organizations/peerOrganizations/guolong.com/users/User1@guolong.com/msp/keystore/priv_sk'
+          path: '/home/qinhan/fabric/mynetwork/organizations/peerOrganizations/guolong.com/users/User1@guolong.com/msp/keystore/priv_sk'
         clientSignedCert:
-          path: 'organizations/peerOrganizations/guolong.com/users/User1@guolong.com/msp/signcerts/User1@guolong.com-cert.pem'
+          path: '/home/qinhan/fabric/mynetwork/organizations/peerOrganizations/guolong.com/users/User1@guolong.com/msp/signcerts/User1@guolong.com-cert.pem'
     connectionProfile:
-      path: 'organizations/peerOrganizations/guolong.com/connection-org1.yaml'
+      path: '/home/qinhan/fabric/mynetwork/organizations/peerOrganizations/guolong.com/connection-org1.yaml'
       discover: true

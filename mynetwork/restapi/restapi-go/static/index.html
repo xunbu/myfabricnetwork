@@ -7,7 +7,6 @@
     <title>Hyperledger Fabric 区块链浏览器</title>
     <script src="/static/js/tailwindcss.js"></script>
     <script src="/static/js/vue.global.prod.js"></script>
-    <!-- 新增 Vue Router -->
     <script src="/static/js/vue-router.global.prod.js"></script>
     <script src="/static/js/chart.js"></script>
     <script>
@@ -117,27 +116,18 @@
                     </div>
                 </div>
 
-                <!-- 路由导航菜单 -->
                 <nav class="hidden md:flex space-x-1 bg-slate-100 p-1 rounded-lg">
                     <router-link to="/" custom v-slot="{ navigate, isActive }">
                         <a href="#" @click="navigate" class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
-                            首页概览
-                        </a>
+                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">首页概览</a>
                     </router-link>
-
                     <router-link to="/nodes" custom v-slot="{ navigate, isActive }">
                         <a href="#" @click="navigate" class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
-                            节点监控
-                        </a>
+                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">节点监控</a>
                     </router-link>
-
                     <router-link to="/data" custom v-slot="{ navigate, isActive }">
                         <a href="#" @click="navigate" class="px-5 py-2 rounded-md text-sm font-semibold transition-all"
-                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">
-                            链上数据
-                        </a>
+                            :class="isActive ? 'bg-white text-theme-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'">链上数据</a>
                     </router-link>
                 </nav>
 
@@ -150,25 +140,20 @@
                     </div>
                     <button @click="triggerGlobalRefresh"
                         class="p-2 text-slate-500 hover:text-theme-primary hover:bg-blue-50 rounded-full transition"
-                        title="刷新当前页">
-                        ↻
-                    </button>
+                        title="刷新">↻</button>
                 </div>
             </div>
         </header>
 
-        <!-- 路由出口：页面将在这里渲染 -->
+        <!-- 路由出口 -->
         <main class="flex-grow container mx-auto px-4 py-8 space-y-8">
             <router-view v-slot="{ Component }">
-                <keep-alive :include="['NodesPage']"> <!-- 仅缓存节点页以保持图表连贯性，其他页面正常销毁重建 -->
+                <keep-alive :include="['NodesPage']">
                     <component :is="Component" ref="viewComponent" />
                 </keep-alive>
             </router-view>
         </main>
-
     </div>
-
-    <!-- ================= 模版定义区 (Templates) ================= -->
 
     <!-- 1. 首页模版 -->
     <template id="tpl-home">
@@ -178,14 +163,12 @@
                     class="card-panel rounded-xl p-5 relative overflow-hidden group">
                     <div
                         class="absolute right-4 top-4 p-2 bg-slate-50 rounded-lg text-2xl text-slate-400 group-hover:text-theme-primary group-hover:scale-110 transition">
-                        {{ item.icon }}
-                    </div>
+                        {{ item.icon }}</div>
                     <div class="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">{{ item.label }}</div>
                     <div class="text-3xl font-mono font-bold text-slate-800">{{ formatNumber(overview[item.key]) }}
                     </div>
                 </div>
             </div>
-
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
                     <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
@@ -198,7 +181,6 @@
                     <div class="flex-grow relative w-full"><canvas id="blockChart"></canvas></div>
                 </div>
             </div>
-
             <div class="card-panel rounded-xl p-0 overflow-hidden border-t-4 border-t-theme-primary">
                 <div class="bg-slate-50 px-6 py-3 border-b border-theme-border flex justify-between items-center">
                     <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">⛓️ 实时区块流</h3>
@@ -233,7 +215,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="card-panel rounded-xl p-6">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="font-bold text-slate-800 text-lg">区块账本记录</h2>
@@ -280,35 +261,32 @@
         <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <button @click="$router.push('/')"
-                    class="btn-ghost px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold">
-                    <span>←</span> 返回首页
-                </button>
+                    class="btn-ghost px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold"><span>←</span>
+                    返回首页</button>
                 <h2 class="text-xl font-bold text-slate-800">区块详情 <span class="text-theme-primary font-mono">#{{
                         blockDetail.blockNumber }}</span></h2>
             </div>
-
             <div v-if="loading" class="text-center py-20">
                 <div
                     class="animate-spin w-10 h-10 border-4 border-theme-primary border-t-transparent rounded-full mx-auto">
                 </div>
             </div>
-
             <div v-else class="card-panel rounded-xl p-8">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                     <div class="space-y-4">
                         <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">区块哈希 (Block Hash)</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">区块哈希</div>
                             <div class="font-mono text-sm text-slate-700 break-all select-all">{{ blockDetail.blockHash
                                 }}</div>
                         </div>
                         <div v-if="blockDetail.dataHash" class="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">数据哈希 (Data Hash)</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">数据哈希</div>
                             <div class="font-mono text-sm text-slate-700 break-all select-all">{{ blockDetail.dataHash
                                 }}</div>
                         </div>
                         <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 hover:border-theme-primary transition cursor-pointer"
                             @click="goToBlock(blockDetail.blockNumber - 1)" v-if="blockDetail.blockNumber > 0">
-                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">前块哈希 (Previous Hash)</div>
+                            <div class="text-xs font-bold text-slate-400 uppercase mb-1">前块哈希</div>
                             <div class="font-mono text-sm text-theme-primary break-all">{{ blockDetail.previousHash }}
                             </div>
                         </div>
@@ -330,10 +308,9 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="border-t border-slate-200 pt-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-800 text-lg">包含的交易 (Transactions)</h3>
+                        <h3 class="font-bold text-slate-800 text-lg">包含的交易</h3>
                         <div class="flex items-center space-x-2 text-sm" v-if="blockTxTotal > 0">
                             <button @click="prevBlockTxPage" :disabled="blockTxPage === 0"
                                 class="btn-ghost px-3 py-1 rounded disabled:opacity-50 text-xs">上一页</button>
@@ -344,7 +321,6 @@
                                 class="btn-ghost px-3 py-1 rounded disabled:opacity-50 text-xs">下一页</button>
                         </div>
                     </div>
-
                     <div class="overflow-x-auto border rounded-lg">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-500 font-semibold border-b border-theme-border">
@@ -364,32 +340,22 @@
                                     <td class="p-4 text-xs">{{ formatTxType(tx.type) }}</td>
                                     <td class="p-4 text-xs font-mono">{{ tx.creatorDomain }}</td>
                                     <td class="p-4 font-mono text-xs">{{ formatTimestamp(tx.timestamp) }}</td>
-                                    <td class="p-4 text-center">
-                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
-                                            :class="tx.validationCode === 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
-                                            {{ tx.validationCode === 0 ? 'VALID' : 'INVALID' }}
-                                        </span>
-                                    </td>
-                                    <td class="p-4 text-right">
-                                        <button @click="showTxDetail(tx.txId)"
-                                            class="text-blue-600 hover:text-blue-800 text-xs font-bold">详情</button>
-                                    </td>
-                                </tr>
-                                <tr v-if="blockTxList.length === 0">
-                                    <td colspan="6" class="p-6 text-center text-slate-400 italic">该页无交易数据或加载中...</td>
+                                    <td class="p-4 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold"
+                                            :class="tx.validationCode === 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">{{
+                                            tx.validationCode === 0 ? 'VALID' : 'INVALID' }}</span></td>
+                                    <td class="p-4 text-right"><button @click="showTxDetail(tx.txId)"
+                                            class="text-blue-600 hover:text-blue-800 text-xs font-bold">详情</button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-
-            <!-- 交易详情 Modal (局部注册) -->
             <tx-modal v-if="showTxModal" :tx-id="currentTxId" @close="showTxModal = false"></tx-modal>
         </div>
     </template>
 
-    <!-- 3. 节点监控模版 -->
+    <!-- 3. 节点监控模版 (更新部分) -->
     <template id="tpl-nodes">
         <div class="space-y-6">
             <div class="card-panel rounded-xl p-4 flex flex-wrap gap-4 justify-between items-center">
@@ -417,6 +383,8 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <!-- 注意：v-for 的 key 最好不要只用 index，用 name 确保唯一性 -->
+                <!-- 使用 v-show 或 keep-alive 可能无法很好配合 Chart.js 的 Canvas 重绘，因此在 switchNodeTab 时会等待 nextTick 重建 -->
                 <div v-for="(node, name) in (nodeTab === 'cpu' ? cpuNodes : memoryNodes)" :key="name"
                     class="card-panel rounded-xl p-6 border-t-4"
                     :class="nodeTab === 'cpu' ? 'border-t-theme-primary' : 'border-t-theme-accent'">
@@ -428,6 +396,7 @@
                         </div>
                     </div>
                     <div class="h-48 w-full relative">
+                        <!-- ID 动态绑定，确保切换 tab 时 ID 变化 -->
                         <canvas :id="`${nodeTab}-chart-${name}`" class="node-chart"></canvas>
                     </div>
                 </div>
@@ -455,7 +424,6 @@
                         class="btn-ghost px-2 py-1 rounded disabled:opacity-50 text-xs">下一页</button>
                 </div>
             </div>
-
             <div class="card-panel rounded-xl p-6 overflow-hidden">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
@@ -467,7 +435,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         <tr v-if="filteredData.length === 0">
-                            <td colspan="3" class="p-8 text-center text-slate-400 italic">暂无数据或数据为空</td>
+                            <td colspan="3" class="p-8 text-center text-slate-400 italic">暂无数据</td>
                         </tr>
                         <tr v-for="(item, idx) in filteredData" :key="item.key" class="table-row-hover">
                             <td class="p-4 font-mono font-bold text-theme-primary align-top">{{ item.key }}</td>
@@ -492,7 +460,6 @@
                     </tbody>
                 </table>
             </div>
-
             <!-- Add Data Modal -->
             <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showAddModal=false"></div>
@@ -517,7 +484,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- History Modal -->
             <div v-if="showHistoryModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="showHistoryModal=false"></div>
@@ -554,13 +520,11 @@
                     </div>
                 </div>
             </div>
-
-            <!-- 用于历史记录弹窗中的交易详情 -->
             <tx-modal v-if="showTxModal" :tx-id="currentTxId" @close="showTxModal = false"></tx-modal>
         </div>
     </template>
 
-    <!-- 5. 交易详情通用模版 (Component) -->
+    <!-- 5. 交易详情模版 -->
     <template id="tpl-tx-modal">
         <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="$emit('close')"></div>
@@ -596,19 +560,12 @@
                                 <div :class="txDetail.validationCode === 0 ? 'text-green-600' : 'text-red-600'"
                                     class="text-xs font-bold uppercase">验证状态 (Status)</div>
                                 <div :class="txDetail.validationCode === 0 ? 'text-green-700' : 'text-red-700'"
-                                    class="font-bold">
-                                    {{ txDetail.validationCode === 0 ? '有效 (VALID)' : '无效 (Code: ' +
-                                    txDetail.validationCode + ')' }}
-                                </div>
+                                    class="font-bold">{{ txDetail.validationCode === 0 ? '有效 (VALID)' : '无效 (Code: ' +
+                                    txDetail.validationCode + ')' }}</div>
                             </div>
                             <div class="p-3 bg-slate-50 rounded border border-slate-100">
                                 <div class="text-xs text-slate-400 font-bold uppercase">数据大小 (Size)</div>
                                 <div class="text-slate-700 font-bold">{{ formatBytes(txDetail.size) }}</div>
-                            </div>
-                            <div v-if="txDetail.channelId"
-                                class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
-                                <div class="text-xs text-slate-400 font-bold uppercase">通道 (Channel)</div>
-                                <div class="text-slate-700 font-bold">{{ txDetail.channelId }}</div>
                             </div>
                             <div v-if="txDetail.creatorDomain"
                                 class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
@@ -617,29 +574,23 @@
                                     txDetail.creatorDomain }}</div>
                             </div>
                         </div>
-
                         <div v-if="txDetail.chainCodeInfos && txDetail.chainCodeInfos.length > 0">
                             <h4 class="font-bold text-slate-800 border-l-4 border-theme-primary pl-3 mb-2">链码调用
                                 (Arguments)</h4>
                             <div v-for="(cc, idx) in txDetail.chainCodeInfos" :key="idx"
                                 class="bg-slate-50 p-4 rounded border border-slate-200 mb-2">
-                                <div class="text-theme-primary font-bold mb-2 flex items-center gap-2">
-                                    <span class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Name</span>
-                                    {{ cc.chainCodeName }}
-                                </div>
+                                <div class="text-theme-primary font-bold mb-2 flex items-center gap-2"><span
+                                        class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Name</span> {{
+                                    cc.chainCodeName }}</div>
                                 <div class="space-y-1">
                                     <div v-for="(arg, i) in cc.args" :key="i"
                                         class="text-xs font-mono text-slate-600 bg-white p-2 rounded border border-slate-200 break-all flex">
                                         <span
-                                            class="text-slate-400 mr-2 select-none font-bold whitespace-nowrap">Arg[{{i}}]</span>
-                                        <span>{{ arg }}</span>
-                                    </div>
+                                            class="text-slate-400 mr-2 select-none font-bold whitespace-nowrap">Arg[{{i}}]</span><span>{{
+                                            arg }}</span></div>
                                 </div>
                             </div>
                         </div>
-                        <div v-else
-                            class="text-center text-slate-400 text-sm py-4 bg-slate-50 rounded border border-dashed border-slate-300">
-                            无链码调用参数</div>
                     </div>
                 </div>
             </div>
@@ -650,39 +601,29 @@
         const { createApp, ref, reactive, nextTick, onMounted, onUnmounted, watch } = Vue;
         const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter;
 
-        // --- 工具函数 ---
+        // 工具函数
         const formatNumber = n => n ? n.toLocaleString() : 0;
         const formatTimestamp = t => t ? new Date(t).toLocaleString('zh-CN') : '-';
         const formatBytes = b => { if (!b) return '0 B'; const i = Math.floor(Math.log(b) / Math.log(1024)); return `${(b / Math.pow(1024, i)).toFixed(2)} ${['B', 'KB', 'MB'][i]}`; };
         const getUsageColor = v => v > 80 ? 'text-red-600' : (v > 50 ? 'text-yellow-500' : 'text-green-600');
         const truncateText = (t, l) => t && t.length > l ? t.substring(0, l) + '...' : t;
-        const formatTxType = (type) => {
-            const map = { 'ENDORSER_TRANSACTION': '背书交易', 'CONFIG': '配置交易', 'CONFIG_UPDATE': '配置更新', 'PEER_RESOURCE_UPDATE': '节点资源更新' };
-            return map[type] || type;
-        };
+        const formatTxType = (type) => { const map = { 'ENDORSER_TRANSACTION': '背书交易', 'CONFIG': '配置交易', 'CONFIG_UPDATE': '配置更新', 'PEER_RESOURCE_UPDATE': '节点资源更新' }; return map[type] || type; };
 
-        // --- 子组件: 交易详情 Modal ---
+        // 组件: 交易详情 Modal
         const TxModalComponent = {
-            template: '#tpl-tx-modal',
-            props: ['txId'],
-            emits: ['close'],
+            template: '#tpl-tx-modal', props: ['txId'], emits: ['close'],
             setup(props) {
                 const txDetail = ref(null);
                 const loading = ref(true);
-
                 onMounted(async () => {
-                    try {
-                        const r = await fetch(`/valuechain/transaction?txID=${props.txId}`);
-                        txDetail.value = await r.json();
-                    } catch (e) { console.error(e); }
-                    finally { loading.value = false; }
+                    try { const r = await fetch(`/valuechain/transaction?txID=${props.txId}`); txDetail.value = await r.json(); }
+                    catch (e) { console.error(e); } finally { loading.value = false; }
                 });
-
                 return { txDetail, loading, formatTimestamp, formatTxType, formatBytes };
             }
         };
 
-        // --- 页面组件: 首页 ---
+        // 页面: 首页
         const HomePage = {
             template: '#tpl-home',
             setup() {
@@ -693,29 +634,14 @@
                 const blockPage = ref(0);
                 const pageSize = 10;
                 let txChart = null, blockChart = null, timer = null;
-
-                const overviewItems = {
-                    blockHeight: { label: '区块高度', key: 'blockHeight', icon: '⛓' },
-                    totalTransactionCount: { label: '总交易量', key: 'totalTransactionCount', icon: '⚡' },
-                    orgCount: { label: '组织数量', key: 'orgCount', icon: '🏢' },
-                    chainCodeCount: { label: '智能合约', key: 'chainCodeCount', icon: '📜' },
-                    nodeCount: { label: '活跃节点', key: 'nodeCount', icon: '🖥️' }
-                };
+                const overviewItems = { blockHeight: { label: '区块高度', key: 'blockHeight', icon: '⛓' }, totalTransactionCount: { label: '总交易量', key: 'totalTransactionCount', icon: '⚡' }, orgCount: { label: '组织数量', key: 'orgCount', icon: '🏢' }, chainCodeCount: { label: '智能合约', key: 'chainCodeCount', icon: '📜' }, nodeCount: { label: '活跃节点', key: 'nodeCount', icon: '🖥️' } };
 
                 const refreshData = async () => {
                     try {
-                        const [infoRes, blockRes, trendRes] = await Promise.all([
-                            fetch('/valuechain/info'),
-                            fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize}`),
-                            fetch('/valuechain/trend')
-                        ]);
+                        const [infoRes, blockRes, trendRes] = await Promise.all([fetch('/valuechain/info'), fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize}`), fetch('/valuechain/trend')]);
                         if (infoRes.ok) Object.assign(overview, await infoRes.json());
                         if (blockRes.ok) blocks.value = (await blockRes.json()).blockPage || [];
-                        if (trendRes.ok) {
-                            const data = await trendRes.json();
-                            trendBlocks.value = data.blockPage || [];
-                            processCharts(trendBlocks.value);
-                        }
+                        if (trendRes.ok) { trendBlocks.value = (await trendRes.json()).blockPage || []; processCharts(trendBlocks.value); }
                     } catch (e) { console.error("Home refresh failed", e); }
                 };
 
@@ -723,54 +649,30 @@
                     const ctxTx = document.getElementById('txChart');
                     const ctxBlk = document.getElementById('blockChart');
                     if (!ctxTx || !ctxBlk) return;
-
                     const buckets = {};
                     const now = new Date(); now.setMinutes(0, 0, 0);
                     const labels = [];
-                    for (let i = 23; i >= 0; i--) {
-                        const d = new Date(now.getTime() - i * 3600000);
-                        const k = `${d.getDate()}-${d.getHours()}`;
-                        labels.push(`${d.getHours()}:00`);
-                        buckets[k] = { tx: 0, blk: 0 };
-                    }
-                    rawBlocks.forEach(b => {
-                        const d = new Date(b.timestamp);
-                        const k = `${d.getDate()}-${d.getHours()}`;
-                        if (buckets[k]) { buckets[k].blk++; buckets[k].tx += b.txCount; }
-                    });
-
+                    for (let i = 23; i >= 0; i--) { const d = new Date(now.getTime() - i * 3600000); const k = `${d.getDate()}-${d.getHours()}`; labels.push(`${d.getHours()}:00`); buckets[k] = { tx: 0, blk: 0 }; }
+                    rawBlocks.forEach(b => { const d = new Date(b.timestamp); const k = `${d.getDate()}-${d.getHours()}`; if (buckets[k]) { buckets[k].blk++; buckets[k].tx += b.txCount; } });
                     const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#e2e8f0', borderDash: [4, 4] } } } };
-
                     if (txChart) txChart.destroy();
-                    txChart = new Chart(ctxTx, {
-                        type: 'line',
-                        data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.tx), borderColor: '#2563eb', backgroundColor: '#2563eb20', fill: true, tension: 0.4 }] },
-                        options: opts
-                    });
-
+                    txChart = new Chart(ctxTx, { type: 'line', data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.tx), borderColor: '#2563eb', backgroundColor: '#2563eb20', fill: true, tension: 0.4 }] }, options: opts });
                     if (blockChart) blockChart.destroy();
-                    blockChart = new Chart(ctxBlk, {
-                        type: 'bar',
-                        data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.blk), backgroundColor: '#9333ea', borderRadius: 3 }] },
-                        options: opts
-                    });
+                    blockChart = new Chart(ctxBlk, { type: 'bar', data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.blk), backgroundColor: '#9333ea', borderRadius: 3 }] }, options: opts });
                 };
 
                 const prevPage = () => { if (blockPage.value > 0) { blockPage.value--; refreshData(); } };
                 const nextPage = () => { blockPage.value++; refreshData(); };
                 const goToBlock = (num) => router.push('/block/' + num);
+                const triggerRefresh = () => refreshData();
 
                 onMounted(() => { refreshData(); timer = setInterval(refreshData, 10000); });
                 onUnmounted(() => { clearInterval(timer); if (txChart) txChart.destroy(); if (blockChart) blockChart.destroy(); });
-
-                // 暴露给父组件调用
-                const triggerRefresh = () => refreshData();
-
                 return { overview, overviewItems, blocks, trendBlocks, blockPage, pageSize, formatNumber, formatTimestamp, formatBytes, prevPage, nextPage, goToBlock, triggerRefresh };
             }
         };
 
-        // --- 页面组件: 节点监控 ---
+        // 页面: 节点监控 (重点修改区域)
         const NodesPage = {
             template: '#tpl-nodes',
             name: 'NodesPage',
@@ -780,8 +682,19 @@
                 const refreshRate = ref('5');
                 const cpuNodes = reactive({});
                 const memoryNodes = reactive({});
-                const charts = {}; // 存储所有图表实例
+                const charts = {}; // 存储图表实例
                 let timer = null;
+
+                // 核心: 纵坐标动态范围算法
+                const calculateYAxisMax = (dataValues) => {
+                    const maxVal = Math.max(...dataValues, 0);
+                    // 算法：最大值 + 20% 的缓冲空间，向上取整到最近的 10
+                    let limit = Math.ceil((maxVal * 1.2) / 10) * 10;
+                    // 约束：不小于 10（避免数值极小时图表太难看），不大于 100（百分比上限）
+                    if (limit < 10) limit = 10;
+                    if (limit > 100) limit = 100;
+                    return limit;
+                };
 
                 const refreshNodeData = async () => {
                     const currentTab = nodeTab.value;
@@ -793,32 +706,44 @@
                         const targetNodes = currentTab === 'cpu' ? cpuNodes : memoryNodes;
                         const cutoffTime = Date.now() - (parseInt(timeRange.value) * 60 * 1000);
 
-                        // Update latest values
+                        // 1. 更新 Vue 响应式数据 (显示数值)
                         Object.keys(data).forEach(name => {
                             const hist = data[name] || [];
                             const last = hist[hist.length - 1] || {};
-                            targetNodes[name] = { latestUsage: currentTab === 'cpu' ? (last.CPUUsage || 0) : ((last.TotalMemory > 0) ? (last.UsedMemory / last.TotalMemory * 100) : 0) };
+                            targetNodes[name] = {
+                                latestUsage: currentTab === 'cpu'
+                                    ? (last.CPUUsage || 0)
+                                    : ((last.TotalMemory > 0) ? (last.UsedMemory / last.TotalMemory * 100) : 0)
+                            };
                         });
 
-                        // Update Charts
+                        // 2. 确保 DOM 更新后绘制图表
                         nextTick(() => {
                             Object.keys(data).forEach(name => {
                                 const hist = data[name] || [];
                                 const filtered = hist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
                                 const labels = filtered.map(d => new Date(d.Timestamp).toLocaleTimeString());
-                                const values = filtered.map(d => currentTab === 'cpu' ? (d.CPUUsage || 0) : (d.TotalMemory > 0 ? (d.UsedMemory / d.TotalMemory * 100) : 0));
+                                const values = filtered.map(d => currentTab === 'cpu'
+                                    ? (d.CPUUsage || 0)
+                                    : (d.TotalMemory > 0 ? (d.UsedMemory / d.TotalMemory * 100) : 0)
+                                );
 
                                 const ctxId = `${currentTab}-chart-${name}`;
                                 const ctx = document.getElementById(ctxId);
+
+                                // 如果 Canvas 不存在(可能切换Tab太快)，直接跳过
                                 if (!ctx) return;
 
-                                const chartKey = name; // 每个tab下分别存储
+                                // 计算动态纵坐标上限
+                                const dynamicMax = calculateYAxisMax(values);
 
-                                // 如果已经存在图表实例，更新数据
                                 if (charts[ctxId]) {
+                                    // 更新现有图表
                                     charts[ctxId].data.labels = labels;
                                     charts[ctxId].data.datasets[0].data = values;
-                                    charts[ctxId].update('none');
+                                    // 动态更新纵坐标
+                                    charts[ctxId].options.scales.y.max = dynamicMax;
+                                    charts[ctxId].update('none'); // none 模式避免每次刷新都闪烁动画
                                 } else {
                                     // 创建新图表
                                     const color = currentTab === 'cpu' ? '#2563eb' : '#9333ea';
@@ -826,12 +751,28 @@
                                         type: 'line',
                                         data: {
                                             labels: labels,
-                                            datasets: [{ data: values, borderColor: color, borderWidth: 2, pointRadius: 0, fill: false, tension: 0.2 }]
+                                            datasets: [{
+                                                data: values,
+                                                borderColor: color,
+                                                borderWidth: 2,
+                                                pointRadius: 0,
+                                                fill: false,
+                                                tension: 0.2
+                                            }]
                                         },
                                         options: {
-                                            responsive: true, maintainAspectRatio: false, animation: false,
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            animation: false,
                                             plugins: { legend: { display: false } },
-                                            scales: { x: { display: false }, y: { min: 0, suggestedMax: 100, ticks: { stepSize: 20 } } }
+                                            scales: {
+                                                x: { display: false },
+                                                y: {
+                                                    min: 0,
+                                                    max: dynamicMax, // 使用计算出的动态最大值
+                                                    ticks: { count: 5 }
+                                                }
+                                            }
                                         }
                                     });
                                 }
@@ -840,221 +781,92 @@
                     } catch (e) { console.error(e); }
                 };
 
+                const switchNodeTab = (t) => {
+                    if (nodeTab.value === t) return;
+
+                    // 1. 清理旧图表实例
+                    Object.keys(charts).forEach(key => {
+                        if (charts[key]) {
+                            charts[key].destroy();
+                            delete charts[key];
+                        }
+                    });
+
+                    // 2. 切换 Tab 状态
+                    nodeTab.value = t;
+
+                    // 3. 等待 DOM 更新后刷新数据并重建图表
+                    nextTick(() => {
+                        refreshNodeData();
+                    });
+                };
+
                 const startNodeRefresh = () => {
                     clearInterval(timer);
                     if (refreshRate.value > 0) timer = setInterval(refreshNodeData, refreshRate.value * 1000);
                 };
 
                 const forceRefreshNode = () => { refreshNodeData(); };
-
-                const switchNodeTab = (t) => {
-                    nodeTab.value = t;
-                    // 切换Tab后，旧的DOM消失，图表实例其实失效了，需要清空引用，并在下一次 refreshData 中重建
-                    // 这里不需要手动 destroy 以前的 chart，因为 canvas 元素已经变了
-                    // 但是为了内存考虑，可以清理 keys
-                    Object.keys(charts).forEach(k => {
-                        if (k.startsWith(t === 'cpu' ? 'memory' : 'cpu')) {
-                            // charts[k].destroy(); // DOM已移除，destroy可能会报错，直接delete引用即可
-                            delete charts[k];
-                        }
-                    });
-                    nextTick(() => { refreshNodeData(); });
-                };
+                const triggerRefresh = () => refreshNodeData();
 
                 onMounted(() => { refreshNodeData(); startNodeRefresh(); });
                 onUnmounted(() => { clearInterval(timer); Object.values(charts).forEach(c => c.destroy()); });
-
-                const triggerRefresh = () => refreshNodeData();
 
                 return { nodeTab, timeRange, refreshRate, cpuNodes, memoryNodes, switchNodeTab, forceRefreshNode, startNodeRefresh, getUsageColor, triggerRefresh };
             }
         };
 
-        // --- 页面组件: 链上数据 ---
+        // 页面: 链上数据 (保持不变)
         const DataPage = {
-            template: '#tpl-data',
-            components: { 'tx-modal': TxModalComponent },
+            template: '#tpl-data', components: { 'tx-modal': TxModalComponent },
             setup() {
-                const chainData = ref([]);
-                const filteredData = ref([]);
-                const dataPageNum = ref(0);
-                const dataPageSize = ref(10);
-                const searchTerm = ref('');
-
-                // Modals state
-                const showAddModal = ref(false);
-                const showHistoryModal = ref(false);
-                const showTxModal = ref(false);
-                const currentTxId = ref('');
-
-                const newKey = ref('');
-                const newValue = ref('');
-                const addSubmitting = ref(false);
-                const historyKey = ref('');
-                const historyData = ref([]);
+                const chainData = ref([]); const filteredData = ref([]); const dataPageNum = ref(0); const dataPageSize = ref(10); const searchTerm = ref('');
+                const showAddModal = ref(false); const showHistoryModal = ref(false); const showTxModal = ref(false); const currentTxId = ref('');
+                const newKey = ref(''); const newValue = ref(''); const addSubmitting = ref(false); const historyKey = ref(''); const historyData = ref([]);
 
                 const loadChainData = async () => {
-                    try {
-                        const r = await fetch(`/valuechain/data/all?pageNum=${dataPageNum.value}&pageSize=${dataPageSize.value}`);
-                        if (r.ok) {
-                            chainData.value = (await r.json()).results || [];
-                            filterChainData();
-                        }
-                    } catch (e) { console.error(e); }
+                    try { const r = await fetch(`/valuechain/data/all?pageNum=${dataPageNum.value}&pageSize=${dataPageSize.value}`); if (r.ok) { chainData.value = (await r.json()).results || []; filterChainData(); } } catch (e) { console.error(e); }
                 };
-
                 const filterChainData = () => {
-                    let d = chainData.value;
-                    if (searchTerm.value) d = d.filter(i => i.key.includes(searchTerm.value));
-                    filteredData.value = d.map(i => ({
-                        ...i,
-                        isJson: i.value && i.value.trim().startsWith('{'),
-                        formattedValue: i.value && i.value.trim().startsWith('{') ? tryFormatJson(i.value) : i.value,
-                        collapsed: true
-                    }));
+                    let d = chainData.value; if (searchTerm.value) d = d.filter(i => i.key.includes(searchTerm.value));
+                    filteredData.value = d.map(i => ({ ...i, isJson: i.value && i.value.trim().startsWith('{'), formattedValue: i.value && i.value.trim().startsWith('{') ? tryFormatJson(i.value) : i.value, collapsed: true }));
                 };
-
                 const tryFormatJson = (str) => { try { return JSON.stringify(JSON.parse(str), null, 2); } catch (e) { return str; } };
                 const toggleJsonDisplay = i => filteredData.value[i].collapsed = !filteredData.value[i].collapsed;
-
                 const prevDataPage = () => { if (dataPageNum.value > 0) { dataPageNum.value--; loadChainData(); } };
                 const nextDataPage = () => { if (chainData.value.length === dataPageSize.value) { dataPageNum.value++; loadChainData(); } };
-
-                // Actions
                 const showAddDataModal = () => { newKey.value = ''; newValue.value = ''; showAddModal.value = true; };
-                const submitData = async () => {
-                    addSubmitting.value = true;
-                    try {
-                        await fetch('/valuechain/data', { method: 'POST', body: JSON.stringify({ key: newKey.value, value: newValue.value }) });
-                        showAddModal.value = false;
-                        loadChainData();
-                    } finally { addSubmitting.value = false; }
-                };
-                const deleteKey = async (k) => {
-                    if (confirm('确认删除?')) {
-                        await fetch('/valuechain/data/delete', { method: 'POST', body: JSON.stringify({ key: k }) });
-                        loadChainData();
-                    }
-                };
-                const showKeyHistory = async (k) => {
-                    historyKey.value = k;
-                    showHistoryModal.value = true;
-                    const r = await fetch(`/valuechain/data/history?key=${k}`);
-                    historyData.value = await r.json();
-                };
-
-                const openTxFromHistory = (txId) => {
-                    currentTxId.value = txId;
-                    showTxModal.value = true;
-                };
-
-                onMounted(loadChainData);
+                const submitData = async () => { addSubmitting.value = true; try { await fetch('/valuechain/data', { method: 'POST', body: JSON.stringify({ key: newKey.value, value: newValue.value }) }); showAddModal.value = false; loadChainData(); } finally { addSubmitting.value = false; } };
+                const deleteKey = async (k) => { if (confirm('确认删除?')) { await fetch('/valuechain/data/delete', { method: 'POST', body: JSON.stringify({ key: k }) }); loadChainData(); } };
+                const showKeyHistory = async (k) => { historyKey.value = k; showHistoryModal.value = true; const r = await fetch(`/valuechain/data/history?key=${k}`); historyData.value = await r.json(); };
+                const openTxFromHistory = (txId) => { currentTxId.value = txId; showTxModal.value = true; };
                 const triggerRefresh = () => loadChainData();
-
-                return {
-                    chainData, filteredData, searchTerm, dataPageNum, dataPageSize,
-                    showAddModal, showHistoryModal, showTxModal, currentTxId,
-                    newKey, newValue, addSubmitting, historyKey, historyData,
-                    prevDataPage, nextDataPage, filterChainData, toggleJsonDisplay, truncateText, formatTimestamp,
-                    showAddDataModal, submitData, deleteKey, showKeyHistory, openTxFromHistory, triggerRefresh
-                };
+                onMounted(loadChainData);
+                return { chainData, filteredData, searchTerm, dataPageNum, dataPageSize, showAddModal, showHistoryModal, showTxModal, currentTxId, newKey, newValue, addSubmitting, historyKey, historyData, prevDataPage, nextDataPage, filterChainData, toggleJsonDisplay, truncateText, formatTimestamp, showAddDataModal, submitData, deleteKey, showKeyHistory, openTxFromHistory, triggerRefresh };
             }
         };
 
-        // --- 页面组件: 区块详情 ---
+        // 页面: 区块详情 (保持不变)
         const BlockDetailPage = {
-            template: '#tpl-block-detail',
-            components: { 'tx-modal': TxModalComponent },
+            template: '#tpl-block-detail', components: { 'tx-modal': TxModalComponent },
             setup() {
-                const route = useRoute();
-                const router = useRouter();
-                const loading = ref(true);
-                const blockDetail = reactive({});
-                const blockTxList = ref([]);
-                const blockTxPage = ref(0);
-                const blockTxPageSize = ref(10);
-                const blockTxTotal = ref(0);
-
-                const showTxModal = ref(false);
-                const currentTxId = ref('');
-
-                const loadBlock = async (bn) => {
-                    loading.value = true;
-                    try {
-                        const r = await fetch(`/valuechain/block?blockNum=${bn}`);
-                        Object.assign(blockDetail, await r.json());
-                        blockTxPage.value = 0;
-                        await loadTxs(bn);
-                    } catch (e) { console.error(e); }
-                    finally { loading.value = false; }
-                };
-
-                const loadTxs = async (bn) => {
-                    const r = await fetch(`/valuechain/block/transactions?blockNum=${bn}&pageNum=${blockTxPage.value}&pageSize=${blockTxPageSize.value}`);
-                    if (r.ok) {
-                        const d = await r.json();
-                        blockTxList.value = d.txPage || [];
-                        blockTxTotal.value = d.total || 0;
-                    }
-                };
-
-                // 监听路由参数变化（例如点击上一块）
-                watch(() => route.params.blockId, (newId) => {
-                    if (newId) loadBlock(newId);
-                }, { immediate: true });
-
+                const route = useRoute(); const router = useRouter(); const loading = ref(true); const blockDetail = reactive({}); const blockTxList = ref([]); const blockTxPage = ref(0); const blockTxPageSize = ref(10); const blockTxTotal = ref(0); const showTxModal = ref(false); const currentTxId = ref('');
+                const loadBlock = async (bn) => { loading.value = true; try { const r = await fetch(`/valuechain/block?blockNum=${bn}`); Object.assign(blockDetail, await r.json()); blockTxPage.value = 0; await loadTxs(bn); } catch (e) { console.error(e); } finally { loading.value = false; } };
+                const loadTxs = async (bn) => { const r = await fetch(`/valuechain/block/transactions?blockNum=${bn}&pageNum=${blockTxPage.value}&pageSize=${blockTxPageSize.value}`); if (r.ok) { const d = await r.json(); blockTxList.value = d.txPage || []; blockTxTotal.value = d.total || 0; } };
+                watch(() => route.params.blockId, (newId) => { if (newId) loadBlock(newId); }, { immediate: true });
                 const prevBlockTxPage = () => { blockTxPage.value--; loadTxs(blockDetail.blockNumber); };
                 const nextBlockTxPage = () => { blockTxPage.value++; loadTxs(blockDetail.blockNumber); };
                 const goToBlock = (num) => router.push('/block/' + num);
-
                 const showTxDetail = (id) => { currentTxId.value = id; showTxModal.value = true; };
                 const triggerRefresh = () => loadBlock(route.params.blockId);
-
-                return {
-                    loading, blockDetail, blockTxList, blockTxPage, blockTxPageSize, blockTxTotal,
-                    showTxModal, currentTxId,
-                    prevBlockTxPage, nextBlockTxPage, goToBlock, showTxDetail,
-                    formatNumber, formatTimestamp, formatBytes, formatTxType, triggerRefresh
-                };
+                return { loading, blockDetail, blockTxList, blockTxPage, blockTxPageSize, blockTxTotal, showTxModal, currentTxId, prevBlockTxPage, nextBlockTxPage, goToBlock, showTxDetail, formatNumber, formatTimestamp, formatBytes, formatTxType, triggerRefresh };
             }
         };
 
-        // --- 路由配置 ---
-        const routes = [
-            { path: '/', component: HomePage },
-            { path: '/nodes', component: NodesPage },
-            { path: '/data', component: DataPage },
-            { path: '/block/:blockId', component: BlockDetailPage }
-        ];
-
-        const router = createRouter({
-            history: createWebHashHistory(), // 使用 Hash 模式 (#/nodes)，兼容性最好
-            routes
-        });
-
-        // --- 根组件 ---
-        const App = {
-            setup() {
-                const refreshStatus = ref('--');
-                const viewComponent = ref(null); // 获取当前路由组件的引用
-
-                // 更新右上角时间
-                setInterval(() => { refreshStatus.value = new Date().toLocaleTimeString('zh-CN'); }, 1000);
-
-                // 全局刷新按钮逻辑：调用子组件暴露的 triggerRefresh 方法
-                const triggerGlobalRefresh = () => {
-                    if (viewComponent.value && viewComponent.value.triggerRefresh) {
-                        viewComponent.value.triggerRefresh();
-                    }
-                };
-
-                return { refreshStatus, viewComponent, triggerGlobalRefresh };
-            }
-        };
-
-        const app = createApp(App);
-        app.use(router);
-        app.mount('#app');
+        const routes = [{ path: '/', component: HomePage }, { path: '/nodes', component: NodesPage }, { path: '/data', component: DataPage }, { path: '/block/:blockId', component: BlockDetailPage }];
+        const router = createRouter({ history: createWebHashHistory(), routes });
+        const App = { setup() { const refreshStatus = ref('--'); const viewComponent = ref(null); setInterval(() => { refreshStatus.value = new Date().toLocaleTimeString('zh-CN'); }, 1000); const triggerGlobalRefresh = () => { if (viewComponent.value && viewComponent.value.triggerRefresh) { viewComponent.value.triggerRefresh(); } }; return { refreshStatus, viewComponent, triggerGlobalRefresh }; } };
+        const app = createApp(App); app.use(router); app.mount('#app');
     </script>
 </body>
 
