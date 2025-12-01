@@ -169,13 +169,18 @@ func getTrendData(c *gin.Context) {
 func getBlockListByPage(c *gin.Context) {
 	gw := c.MustGet("gateway").(*client.Gateway)
 	channelName := c.MustGet("channelName").(string)
+
+	// 解析分页参数
 	pageNumStr := c.DefaultQuery("pageNum", "0")
 	pageNum, _ := strconv.ParseUint(pageNumStr, 10, 64)
 	pageSizeStr := c.DefaultQuery("pageSize", "10")
 	pageSize, _ := strconv.ParseUint(pageSizeStr, 10, 64)
 
-	// 列表页包含交易详情
-	response, err := gateway.GetBlockListByPage(gw, channelName, pageNum, pageSize, true)
+	// [新增] 解析排序参数，默认为 DESC (倒序/最新)
+	sortOrder := c.DefaultQuery("sort", "DESC")
+
+	// 调用 gateway 方法，传入 sortOrder
+	response, err := gateway.GetBlockListByPage(gw, channelName, pageNum, pageSize, true, sortOrder)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取区块列表失败: " + err.Error()})
 		return

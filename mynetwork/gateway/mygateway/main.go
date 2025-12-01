@@ -130,7 +130,7 @@ func main() {
 
 	// 11. 测试分页查询区块 (GetBlockListByPage)
 	log.Println("9. 测试分页查询区块列表 (第0页, 5条)...")
-	blockPage, err := gateway.GetBlockListByPage(gw, channelName, 0, 5, false)
+	blockPage, err := gateway.GetBlockListByPage(gw, channelName, 0, 5, false, "DESC")
 	if err != nil {
 		log.Printf("❌ 分页查询失败: %v", err)
 	} else {

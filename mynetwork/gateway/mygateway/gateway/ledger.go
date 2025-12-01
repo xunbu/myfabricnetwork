@@ -125,9 +125,12 @@ func GetOrganizationCount(gw *client.Gateway, channelName string) (int, error) {
 }
 
 // GetBlockListByPage 分页查询区块列表
-func GetBlockListByPage(gw *client.Gateway, channelName string, pageNum uint64, pageSize uint64, includeTxDetails bool) (*BlockPage, error) {
+// GetBlockListByPage 分页查询区块列表 (支持 sortOrder: "ASC" | "DESC")
+func GetBlockListByPage(gw *client.Gateway, channelName string, pageNum uint64, pageSize uint64, includeTxDetails bool, sortOrder string) (*BlockPage, error) {
 	var blockHeight uint64
-	stats := GetChainStats() // 调用 monitor.go 的缓存数据
+
+	// 1. 获取高度
+	stats := GetChainStats()
 	if stats.Height > 0 {
 		blockHeight = stats.Height
 	} else {
@@ -140,32 +143,80 @@ func GetBlockListByPage(gw *client.Gateway, channelName string, pageNum uint64, 
 
 	totalBlocks := int64(blockHeight)
 	if totalBlocks == 0 {
-		return nil, nil
-	}
-	startIdx := int64(pageNum * pageSize)
-	if startIdx >= totalBlocks {
-		return nil, nil
-	}
-	endIdx := startIdx + int64(pageSize) - 1
-	if endIdx >= totalBlocks {
-		endIdx = totalBlocks - 1
+		return &BlockPage{Results: []*BlockInfo{}, Page: int(pageNum), PageSize: int(pageSize), Total: 0}, nil
 	}
 
 	var blockList []*BlockInfo
-	for blockNumber := endIdx; blockNumber >= startIdx; blockNumber-- {
-		blockBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetBlockByNumber", channelName, fmt.Sprint(blockNumber))
-		if err != nil {
-			return nil, err
+
+	// ==================== 排序逻辑分支 ====================
+
+	if sortOrder == "ASC" {
+		// --- 正序模式 (Oldest First: 0, 1, 2...) ---
+
+		// 1. 计算起始索引 (Low)
+		startIdx := int64(pageNum * pageSize)
+
+		// 如果起始位置超过了总高度，说明该页没数据
+		if startIdx >= totalBlocks {
+			return &BlockPage{Results: []*BlockInfo{}, Page: int(pageNum), PageSize: int(pageSize), Total: int(totalBlocks)}, nil
 		}
 
-		blockInfo, err := parseBlockInfo(blockBytes, uint64(blockNumber), channelName, includeTxDetails) // 调用 utils.go
-		if err != nil {
-			return nil, err
+		// 2. 计算结束索引 (High)
+		endIdx := startIdx + int64(pageSize) - 1
+		if endIdx >= totalBlocks {
+			endIdx = totalBlocks - 1
 		}
-		blockList = append(blockList, blockInfo)
+
+		// 3. 正序遍历：i++
+		for blockNumber := startIdx; blockNumber <= endIdx; blockNumber++ {
+			blockBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetBlockByNumber", channelName, fmt.Sprint(blockNumber))
+			if err != nil {
+				fmt.Printf("Error fetching block %d: %v\n", blockNumber, err)
+				continue
+			}
+			blockInfo, err := parseBlockInfo(blockBytes, uint64(blockNumber), channelName, includeTxDetails)
+			if err == nil {
+				blockList = append(blockList, blockInfo)
+			}
+		}
+
+	} else {
+		// --- 倒序模式 (Newest First: 100, 99, 98...) [默认] ---
+
+		// 1. 计算起始索引 (High) - 因为是倒序，Start 其实是大数字
+		currentHigh := (totalBlocks - 1) - int64(pageNum*pageSize)
+
+		// 如果最高位小于0，说明翻页过度
+		if currentHigh < 0 {
+			return &BlockPage{Results: []*BlockInfo{}, Page: int(pageNum), PageSize: int(pageSize), Total: int(totalBlocks)}, nil
+		}
+
+		// 2. 计算结束索引 (Low)
+		currentLow := currentHigh - int64(pageSize) + 1
+		if currentLow < 0 {
+			currentLow = 0
+		}
+
+		// 3. 倒序遍历：i--
+		for blockNumber := currentHigh; blockNumber >= currentLow; blockNumber-- {
+			blockBytes, err := EvaluateTransaction(gw, channelName, "qscc", "GetBlockByNumber", channelName, fmt.Sprint(blockNumber))
+			if err != nil {
+				fmt.Printf("Error fetching block %d: %v\n", blockNumber, err)
+				continue
+			}
+			blockInfo, err := parseBlockInfo(blockBytes, uint64(blockNumber), channelName, includeTxDetails)
+			if err == nil {
+				blockList = append(blockList, blockInfo)
+			}
+		}
 	}
 
-	return &BlockPage{Results: blockList, Page: int(pageNum), PageSize: int(pageSize), Total: int(totalBlocks)}, nil
+	return &BlockPage{
+		Results:  blockList,
+		Page:     int(pageNum),
+		PageSize: int(pageSize),
+		Total:    int(totalBlocks),
+	}, nil
 }
 
 // GetBlockByNum 根据区块号获取区块详情
