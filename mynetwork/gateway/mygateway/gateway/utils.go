@@ -15,37 +15,79 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// asn1Header 是一个临时的结构体，用于以 ASN.1 格式序列化区块头。
-// 字段的顺序至关重要，必须是 Number, PreviousHash, DataHash。
-type asn1Header struct {
-	Number       int64
-	PreviousHash []byte
-	DataHash     []byte
-}
-
-// CalculateBlockHash 是一个与 Fabric 兼容的区块哈希计算函数。
-// 它复现了 `protoutil.BlockHeaderHash()` 的功能。
-func CalculateBlockHash(header *common.BlockHeader) ([]byte, error) {
-	// 1. 将区块头的核心字段填充到 ASN.1 结构体中
-	asn1Header := asn1Header{
-		Number:       int64(header.Number),
-		PreviousHash: header.PreviousHash,
-		DataHash:     header.DataHash,
+// ParseTxInfo 是核心通用函数，用于将 Envelope 字节解析为标准化的 Txinfo 结构
+// 被 GetTxByID, GetBlockTransactionsByPage 复用
+func ParseTxInfo(envelopeBytes []byte, validationCode int) (*Txinfo, error) {
+	txInfo := &Txinfo{
+		Size:           len(envelopeBytes),
+		ValidationCode: validationCode,
 	}
 
-	// 2. 使用 ASN.1 DER 编码规则进行序列化
-	result, err := asn1.Marshal(asn1Header)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block header for hashing: %w", err)
+	envelope := &common.Envelope{}
+	if err := proto.Unmarshal(envelopeBytes, envelope); err != nil {
+		return nil, fmt.Errorf("解析Envelope失败: %w", err)
 	}
 
-	// 3. 对序列化后的字节流进行 SHA256 哈希计算
-	hash := sha256.Sum256(result)
+	payload := &common.Payload{}
+	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		return nil, fmt.Errorf("解析Payload失败: %w", err)
+	}
 
-	// 返回哈希值的切片
-	return hash[:], nil
+	chHeader := &common.ChannelHeader{}
+	if err := proto.Unmarshal(payload.Header.ChannelHeader, chHeader); err != nil {
+		return nil, fmt.Errorf("解析ChannelHeader失败: %w", err)
+	}
+
+	txInfo.TxId = chHeader.TxId
+	txInfo.ChannelId = chHeader.ChannelId
+	txInfo.Type = common.HeaderType_name[chHeader.Type]
+	txInfo.Timestamp = chHeader.Timestamp.AsTime()
+
+	// 仅针对“背书交易”解析具体的 Chaincode 参数
+	if common.HeaderType(chHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
+		if err := parseChaincodeArgs(payload.Data, txInfo); err != nil {
+			// 解析参数非关键路径，可选择忽略错误或记录日志
+			// fmt.Printf("Tx %s 参数解析警告: %v\n", txInfo.TxId, err)
+		}
+	}
+
+	return txInfo, nil
 }
 
+// parseChaincodeArgs 辅助函数：深度解析 Chaincode 参数
+func parseChaincodeArgs(dataBytes []byte, txInfo *Txinfo) error {
+	transaction := &peer.Transaction{}
+	if err := proto.Unmarshal(dataBytes, transaction); err != nil {
+		return err
+	}
+
+	for _, action := range transaction.Actions {
+		cap := &peer.ChaincodeActionPayload{}
+		if err := proto.Unmarshal(action.Payload, cap); err != nil {
+			continue
+		}
+
+		cpp := &peer.ChaincodeProposalPayload{}
+		if err := proto.Unmarshal(cap.ChaincodeProposalPayload, cpp); err != nil {
+			continue
+		}
+
+		cis := &peer.ChaincodeInvocationSpec{}
+		if err := proto.Unmarshal(cpp.Input, cis); err != nil {
+			continue
+		}
+
+		if cis.ChaincodeSpec != nil {
+			txInfo.ChainCodeInfos = append(txInfo.ChainCodeInfos, &ChainCodeInfo{
+				ChainCodeName: cis.ChaincodeSpec.ChaincodeId.Name,
+				Args:          convertBytesToStrings(cis.ChaincodeSpec.Input.Args),
+			})
+		}
+	}
+	return nil
+}
+
+// parseBlockInfo 解析区块头及元数据
 func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, includeTxDetails bool) (*BlockInfo, error) {
 	var block common.Block
 	if err := proto.Unmarshal(blockBytes, &block); err != nil {
@@ -57,110 +99,130 @@ func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, i
 		return nil, fmt.Errorf("区块头信息为空")
 	}
 
-	// 解析区块数据大小
-	blockSize := int64(len(blockBytes))
-
-	// 从第一个交易中获取时间戳和创建者信息
-	timestamp, blockCreator, txIDs := extractBlockMetadata(block.Data.Data, includeTxDetails)
-
-	// 对于创世区块（区块0），设置默认时间戳
-	if blockNumber == 0 && timestamp.IsZero() {
-		timestamp = time.Now().AddDate(-1, 0, 0) // 设置为一年前
-	}
-
-	h, err := CalculateBlockHash(blockHeader)
+	blockHash, err := CalculateBlockHash(blockHeader)
 	if err != nil {
 		return nil, err
 	}
-	return &BlockInfo{
-		BlockHash:    fmt.Sprintf("%x", h),
+
+	info := &BlockInfo{
+		BlockHash:    fmt.Sprintf("%x", blockHash),
 		PreviousHash: fmt.Sprintf("%x", blockHeader.PreviousHash),
 		MerkleRoot:   fmt.Sprintf("%x", blockHeader.DataHash),
 		BlockNumber:  blockNumber,
 		TxCount:      uint64(len(block.Data.Data)),
-		BlockSize:    blockSize,
-		Timestamp:    timestamp,
+		BlockSize:    int64(len(blockBytes)),
 		ChannelID:    channelName,
-		BlockCreator: blockCreator,
-		TxIDs:        txIDs,
+	}
+
+	// 遍历交易以提取时间戳、创建者和TxIDs
+	// 我们只解析必要的信息，不进行全量 Chaincode 参数解析以节省性能
+	var txIDs []string
+
+	for i, data := range block.Data.Data {
+		// 快速解析 Header 获取时间戳和 TxID
+		txEnv, err := fastParseHeader(data)
+		if err != nil {
+			continue
+		}
+
+		// 使用第一个交易的时间戳作为区块时间戳
+		if i == 0 {
+			info.Timestamp = txEnv.Timestamp
+			info.BlockCreator = getCreatorFromEnvelope(data)
+		}
+
+		if includeTxDetails {
+			txIDs = append(txIDs, txEnv.TxId)
+		}
+	}
+
+	// 兜底时间戳（如果是创世块或者解析失败）
+	if info.Timestamp.IsZero() {
+		if blockNumber == 0 {
+			info.Timestamp = time.Now().AddDate(-1, 0, 0)
+		} else {
+			info.Timestamp = time.Now()
+		}
+	}
+
+	info.TxIDs = txIDs
+	return info, nil
+}
+
+// simpleTxHeader 内部结构，用于 parseBlockInfo 快速提取信息
+type simpleTxHeader struct {
+	TxId      string
+	Timestamp time.Time
+}
+
+func fastParseHeader(envelopeBytes []byte) (*simpleTxHeader, error) {
+	envelope := &common.Envelope{}
+	if err := proto.Unmarshal(envelopeBytes, envelope); err != nil {
+		return nil, err
+	}
+	payload := &common.Payload{}
+	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
+		return nil, err
+	}
+	chHeader := &common.ChannelHeader{}
+	if err := proto.Unmarshal(payload.Header.ChannelHeader, chHeader); err != nil {
+		return nil, err
+	}
+	return &simpleTxHeader{
+		TxId:      chHeader.TxId,
+		Timestamp: chHeader.Timestamp.AsTime(),
 	}, nil
 }
 
-// 从区块交易中提取元数据
-func extractBlockMetadata(blockData [][]byte, includeTxDetails bool) (time.Time, string, []string) {
-	if len(blockData) == 0 {
-		return time.Time{}, "", nil
+// getCreatorFromEnvelope 辅助函数：从 SignatureHeader 中提取创建者摘要
+func getCreatorFromEnvelope(envelopeBytes []byte) string {
+	env := &common.Envelope{}
+	if err := proto.Unmarshal(envelopeBytes, env); err != nil {
+		return ""
+	}
+	pay := &common.Payload{}
+	if err := proto.Unmarshal(env.Payload, pay); err != nil {
+		return ""
+	}
+	sigHeader := &common.SignatureHeader{}
+	if err := proto.Unmarshal(pay.Header.SignatureHeader, sigHeader); err != nil {
+		return ""
 	}
 
-	var timestamp time.Time
-	var blockCreator string
-	var txIDs []string
-
-	// 遍历所有交易，获取时间戳和创建者信息
-	for i, data := range blockData {
-		var envelope common.Envelope
-		if err := proto.Unmarshal(data, &envelope); err != nil {
-			continue
-		}
-
-		var payload common.Payload
-		if err := proto.Unmarshal(envelope.Payload, &payload); err != nil {
-			continue
-		}
-
-		var channelHeader common.ChannelHeader
-		if err := proto.Unmarshal(payload.Header.ChannelHeader, &channelHeader); err != nil {
-			continue
-		}
-
-		// 使用第一个有效的交易时间戳作为区块时间戳
-		if timestamp.IsZero() {
-			timestamp = time.Unix(channelHeader.Timestamp.Seconds, int64(channelHeader.Timestamp.Nanos))
-		}
-
-		// 从第一个交易获取创建者信息
-		if i == 0 && blockCreator == "" {
-			blockCreator = extractCreatorFromSignature(payload.Header.SignatureHeader)
-		}
-
-		// 如果需要包含交易详情，收集交易ID
-		if includeTxDetails {
-			txIDs = append(txIDs, channelHeader.TxId)
-		}
+	if len(sigHeader.Creator) > 0 {
+		return fmt.Sprintf("Creator:%x", sigHeader.Creator[:min(8, len(sigHeader.Creator))])
 	}
-
-	return timestamp, blockCreator, txIDs
+	return ""
 }
 
-// 从签名头中提取创建者信息
-func extractCreatorFromSignature(signatureHeaderBytes []byte) string {
-	if len(signatureHeaderBytes) == 0 {
-		return ""
+// CalculateBlockHash 计算区块哈希
+func CalculateBlockHash(header *common.BlockHeader) ([]byte, error) {
+	type asn1Header struct {
+		Number       int64
+		PreviousHash []byte
+		DataHash     []byte
 	}
-
-	var signatureHeader common.SignatureHeader
-	if err := proto.Unmarshal(signatureHeaderBytes, &signatureHeader); err != nil {
-		return ""
+	asn1HeaderData := asn1Header{
+		Number:       int64(header.Number),
+		PreviousHash: header.PreviousHash,
+		DataHash:     header.DataHash,
 	}
-
-	if len(signatureHeader.Creator) > 0 {
-		// 简化显示：返回创建者信息的简短哈希
-		return fmt.Sprintf("Creator:%x", signatureHeader.Creator[:min(8, len(signatureHeader.Creator))])
+	result, err := asn1.Marshal(asn1HeaderData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal block header for hashing: %w", err)
 	}
-
-	return ""
+	hash := sha256.Sum256(result)
+	return hash[:], nil
 }
 
 func parseReadWriteSets(tx *peer.ProcessedTransaction) {
 	if tx.TransactionEnvelope == nil || tx.TransactionEnvelope.Payload == nil {
 		return
 	}
-
 	payload := &common.Payload{}
 	if err := proto.Unmarshal(tx.TransactionEnvelope.Payload, payload); err != nil {
 		return
 	}
-
 	txData := &peer.Transaction{}
 	if err := proto.Unmarshal(payload.Data, txData); err != nil {
 		return
@@ -171,19 +233,15 @@ func parseReadWriteSets(tx *peer.ProcessedTransaction) {
 		if err := proto.Unmarshal(action.Payload, cap); err != nil {
 			continue
 		}
-
 		if cap.Action != nil && cap.Action.ProposalResponsePayload != nil {
 			prp := &peer.ProposalResponsePayload{}
 			if err := proto.Unmarshal(cap.Action.ProposalResponsePayload, prp); err != nil {
 				continue
 			}
-
 			chaincodeAction := &peer.ChaincodeAction{}
 			if err := proto.Unmarshal(prp.Extension, chaincodeAction); err != nil {
 				continue
 			}
-
-			// 解析读写集
 			if chaincodeAction.Results != nil {
 				txReadWriteSet := &rwset.TxReadWriteSet{}
 				if err := proto.Unmarshal(chaincodeAction.Results, txReadWriteSet); err == nil {
@@ -197,14 +255,10 @@ func parseReadWriteSets(tx *peer.ProcessedTransaction) {
 
 func displayReadWriteSet(rwSet *rwset.TxReadWriteSet) {
 	fmt.Printf("数据模型: %s\n", rwset.TxReadWriteSet_DataModel_name[int32(rwSet.DataModel)])
-
 	for _, nsRwSet := range rwSet.NsRwset {
 		fmt.Printf("命名空间: %s\n", nsRwSet.Namespace)
-
-		// 解析K-V读写集
 		kvRwSet := &kvrwset.KVRWSet{}
 		if err := proto.Unmarshal(nsRwSet.Rwset, kvRwSet); err == nil {
-			// 读取集
 			if len(kvRwSet.Reads) > 0 {
 				fmt.Printf("  读取集 (%d 个):\n", len(kvRwSet.Reads))
 				for j, read := range kvRwSet.Reads {
@@ -215,8 +269,6 @@ func displayReadWriteSet(rwSet *rwset.TxReadWriteSet) {
 					}
 				}
 			}
-
-			// 写入集
 			if len(kvRwSet.Writes) > 0 {
 				fmt.Printf("  写入集 (%d 个):\n", len(kvRwSet.Writes))
 				for j, write := range kvRwSet.Writes {
@@ -225,15 +277,6 @@ func displayReadWriteSet(rwSet *rwset.TxReadWriteSet) {
 					if !write.IsDelete {
 						fmt.Printf("        Value: %s\n", string(write.Value))
 					}
-				}
-			}
-
-			// 范围查询
-			if len(kvRwSet.RangeQueriesInfo) > 0 {
-				fmt.Printf("  范围查询 (%d 个):\n", len(kvRwSet.RangeQueriesInfo))
-				for j, rangeQuery := range kvRwSet.RangeQueriesInfo {
-					fmt.Printf("    [%d] StartKey: %s, EndKey: %s\n",
-						j+1, rangeQuery.StartKey, rangeQuery.EndKey)
 				}
 			}
 		}

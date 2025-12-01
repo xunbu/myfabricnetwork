@@ -203,19 +203,16 @@
                     </div>
                 </div>
 
-                <!-- 区块列表 (修改部分) -->
+                <!-- 区块列表 -->
                 <div class="card-panel rounded-xl p-6">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="font-bold text-slate-800 text-lg">区块账本记录</h2>
                         <div class="flex items-center space-x-2 text-sm">
                             <button @click="prevPage" :disabled="blockPage === 0"
                                 class="btn-ghost px-3 py-1 rounded disabled:opacity-50">上一页</button>
-
-                            <!-- 修改：显示当前页 / 总页数 -->
                             <span class="font-mono text-theme-primary font-bold">
                                 第 {{ blockPage + 1 }} 页 / 共 {{ Math.ceil((overview.blockHeight || 0) / pageSize) }} 页
                             </span>
-
                             <button @click="nextPage" :disabled="(blockPage + 1) * pageSize >= overview.blockHeight"
                                 class="btn-ghost px-3 py-1 rounded disabled:opacity-50">下一页</button>
                         </div>
@@ -419,7 +416,7 @@
             class="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="closeAllModals"></div>
 
-            <!-- 交易详情 Modal -->
+            <!-- 交易详情 Modal (重写以匹配后端 JSON tag) -->
             <div v-if="showTxModal"
                 class="bg-white w-full max-w-3xl max-h-[90vh] flex flex-col rounded-xl shadow-2xl z-10 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -436,68 +433,61 @@
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
                                 <div class="text-xs text-slate-400 font-bold uppercase">交易 ID (Tx ID)</div>
-                                <div class="font-mono text-slate-700 break-all font-bold select-all">{{ txDetail.TxId }}
+                                <div class="font-mono text-slate-700 break-all font-bold select-all">{{ txDetail.txId }}
                                 </div>
                             </div>
                             <div class="p-3 bg-slate-50 rounded border border-slate-100">
                                 <div class="text-xs text-slate-400 font-bold uppercase">时间 (Time)</div>
-                                <div class="text-slate-700 font-bold">{{ formatTimestamp(txDetail.Timestamp) }}</div>
+                                <div class="text-slate-700 font-bold">{{ formatTimestamp(txDetail.timestamp) }}</div>
                             </div>
-                            <div class="p-3 bg-green-50 rounded border border-green-100">
-                                <div class="text-xs text-green-600 font-bold uppercase">状态 (Status)</div>
-                                <div class="text-green-700 font-bold">有效 ({{ txDetail.ValidationCode }})</div>
+                            <div class="p-3 bg-slate-50 rounded border border-slate-100">
+                                <div class="text-xs text-slate-400 font-bold uppercase">交易类型 (Type)</div>
+                                <div class="text-slate-700 font-bold">{{ txDetail.type }}</div>
                             </div>
-                            <div v-if="txDetail.CreatorMSP" class="p-3 bg-slate-50 rounded border border-slate-100">
-                                <div class="text-xs text-slate-400 font-bold uppercase">创建者 MSP</div>
-                                <div class="text-slate-700 font-bold">{{ txDetail.CreatorMSP }}</div>
+                            <div :class="txDetail.validationCode === 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'"
+                                class="p-3 rounded border">
+                                <div :class="txDetail.validationCode === 0 ? 'text-green-600' : 'text-red-600'"
+                                    class="text-xs font-bold uppercase">验证状态 (Status)</div>
+                                <div :class="txDetail.validationCode === 0 ? 'text-green-700' : 'text-red-700'"
+                                    class="font-bold">
+                                    {{ txDetail.validationCode === 0 ? '有效 (VALID)' : '无效 (Code: ' +
+                                    txDetail.validationCode + ')' }}
+                                </div>
                             </div>
-                            <div v-if="txDetail.ChannelId" class="p-3 bg-slate-50 rounded border border-slate-100">
+                            <div class="p-3 bg-slate-50 rounded border border-slate-100">
+                                <div class="text-xs text-slate-400 font-bold uppercase">数据大小 (Size)</div>
+                                <div class="text-slate-700 font-bold">{{ formatBytes(txDetail.size) }}</div>
+                            </div>
+                            <div v-if="txDetail.channelId"
+                                class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
                                 <div class="text-xs text-slate-400 font-bold uppercase">通道 (Channel)</div>
-                                <div class="text-slate-700 font-bold">{{ txDetail.ChannelId }}</div>
+                                <div class="text-slate-700 font-bold">{{ txDetail.channelId }}</div>
                             </div>
                         </div>
 
-                        <div v-if="txDetail.ChainCodeInfos && txDetail.ChainCodeInfos.length > 0">
-                            <h4 class="font-bold text-slate-800 border-l-4 border-theme-primary pl-3 mb-2">链码调用</h4>
-                            <div v-for="cc in txDetail.ChainCodeInfos" :key="cc.ChainCodeName"
+                        <!-- 链码调用参数 (重要修改：匹配后端小写开头的 chainCodeInfos) -->
+                        <div v-if="txDetail.chainCodeInfos && txDetail.chainCodeInfos.length > 0">
+                            <h4 class="font-bold text-slate-800 border-l-4 border-theme-primary pl-3 mb-2">链码调用
+                                (Arguments)</h4>
+                            <div v-for="(cc, idx) in txDetail.chainCodeInfos" :key="idx"
                                 class="bg-slate-50 p-4 rounded border border-slate-200 mb-2">
-                                <div class="text-theme-primary font-bold mb-2">{{ cc.ChainCodeName }}</div>
-                                <div v-for="(arg, i) in cc.Args" :key="i"
-                                    class="text-xs font-mono text-slate-600 bg-white p-2 rounded mb-1 border border-slate-200 break-all">
-                                    <span class="text-slate-400 mr-2 select-none">参数[{{i}}]</span>{{ arg }}
+                                <div class="text-theme-primary font-bold mb-2 flex items-center gap-2">
+                                    <span class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded">Name</span>
+                                    {{ cc.chainCodeName }}
+                                </div>
+                                <div class="space-y-1">
+                                    <div v-for="(arg, i) in cc.args" :key="i"
+                                        class="text-xs font-mono text-slate-600 bg-white p-2 rounded border border-slate-200 break-all flex">
+                                        <span
+                                            class="text-slate-400 mr-2 select-none font-bold whitespace-nowrap">Arg[{{i}}]</span>
+                                        <span>{{ arg }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div v-if="txDetail.Writes && txDetail.Writes.length > 0">
-                            <h4 class="font-bold text-slate-800 border-l-4 border-theme-accent pl-3 mb-2">读写集 (Write
-                                Set)</h4>
-                            <div class="bg-slate-50 rounded border border-slate-200 overflow-hidden">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-slate-100 text-slate-500 font-bold">
-                                        <tr>
-                                            <th class="p-2">键 (Key)</th>
-                                            <th class="p-2">值 (预览)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-200">
-                                        <tr v-for="(w, idx) in txDetail.Writes" :key="idx">
-                                            <td class="p-2 font-mono text-theme-primary font-bold">{{ w.key }}</td>
-                                            <td class="p-2 font-mono text-xs text-slate-600 truncate max-w-xs">{{
-                                                w.value }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div v-if="txDetail.Endorsers && txDetail.Endorsers.length > 0">
-                            <h4 class="font-bold text-slate-800 border-l-4 border-slate-400 pl-3 mb-2">背书节点</h4>
-                            <div class="flex flex-wrap gap-2">
-                                <span v-for="endorser in txDetail.Endorsers" :key="endorser"
-                                    class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-bold border border-slate-200">{{
-                                    endorser }}</span>
-                            </div>
+                        <div v-else
+                            class="text-center text-slate-400 text-sm py-4 bg-slate-50 rounded border border-dashed border-slate-300">
+                            无链码调用参数
                         </div>
                     </div>
                 </div>
@@ -733,7 +723,7 @@
 
                 const loadTrendData = async () => {
                     try {
-                        const res = await fetch('/valuechain/trend'); // 替换原来的大数据量请求
+                        const res = await fetch('/valuechain/trend');
                         if (res.ok) {
                             const data = await res.json();
                             trendBlocks.value = data.blockPage || [];
