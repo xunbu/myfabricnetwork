@@ -3,20 +3,23 @@ package gateway
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/asn1"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go-apiv2/ledger/rwset/kvrwset"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"google.golang.org/protobuf/proto"
 )
 
 // ParseTxInfo 是核心通用函数，用于将 Envelope 字节解析为标准化的 Txinfo 结构
-// 被 GetTxByID, GetBlockTransactionsByPage 复用
 func ParseTxInfo(envelopeBytes []byte, validationCode int) (*Txinfo, error) {
 	txInfo := &Txinfo{
 		Size:           len(envelopeBytes),
@@ -43,15 +46,62 @@ func ParseTxInfo(envelopeBytes []byte, validationCode int) (*Txinfo, error) {
 	txInfo.Type = common.HeaderType_name[chHeader.Type]
 	txInfo.Timestamp = chHeader.Timestamp.AsTime()
 
+	// --- 解析身份信息 (MSP 和 域名) ---
+	mspID, domain := parseCreatorIdentity(payload.Header.SignatureHeader)
+	txInfo.CreatorMSP = mspID
+	txInfo.CreatorDomain = domain
+
 	// 仅针对“背书交易”解析具体的 Chaincode 参数
 	if common.HeaderType(chHeader.Type) == common.HeaderType_ENDORSER_TRANSACTION {
 		if err := parseChaincodeArgs(payload.Data, txInfo); err != nil {
-			// 解析参数非关键路径，可选择忽略错误或记录日志
-			// fmt.Printf("Tx %s 参数解析警告: %v\n", txInfo.TxId, err)
+			// 参数解析失败不影响主体信息返回
 		}
 	}
 
 	return txInfo, nil
+}
+
+// parseCreatorIdentity 解析签名头中的身份信息
+func parseCreatorIdentity(signatureHeaderBytes []byte) (string, string) {
+	if len(signatureHeaderBytes) == 0 {
+		return "", ""
+	}
+
+	sigHeader := &common.SignatureHeader{}
+	if err := proto.Unmarshal(signatureHeaderBytes, sigHeader); err != nil {
+		return "", ""
+	}
+
+	// 解析 SerializedIdentity (包含 MSPID 和 证书)
+	identity := &msp.SerializedIdentity{}
+	if err := proto.Unmarshal(sigHeader.Creator, identity); err != nil {
+		return "", ""
+	}
+
+	mspID := identity.Mspid
+	domain := ""
+
+	// 解析 X.509 证书以获取域名 (CN)
+	block, _ := pem.Decode(identity.IdBytes)
+	if block != nil {
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err == nil {
+			// 尝试解析 Subject Common Name
+			// 格式通常为: "User1@org1.example.com" 或 "peer0.org1.example.com"
+			cn := cert.Subject.CommonName
+			if strings.Contains(cn, "@") {
+				parts := strings.Split(cn, "@")
+				if len(parts) > 1 {
+					domain = parts[1] // 取 @ 后面的域名部分
+				}
+			} else {
+				// 如果没有 @，尝试直接返回 CN (可能是节点名称)
+				domain = cn
+			}
+		}
+	}
+
+	return mspID, domain
 }
 
 // parseChaincodeArgs 辅助函数：深度解析 Chaincode 参数
@@ -114,10 +164,7 @@ func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, i
 		ChannelID:    channelName,
 	}
 
-	// 遍历交易以提取时间戳、创建者和TxIDs
-	// 我们只解析必要的信息，不进行全量 Chaincode 参数解析以节省性能
 	var txIDs []string
-
 	for i, data := range block.Data.Data {
 		// 快速解析 Header 获取时间戳和 TxID
 		txEnv, err := fastParseHeader(data)
@@ -136,7 +183,7 @@ func parseBlockInfo(blockBytes []byte, blockNumber uint64, channelName string, i
 		}
 	}
 
-	// 兜底时间戳（如果是创世块或者解析失败）
+	// 兜底时间戳
 	if info.Timestamp.IsZero() {
 		if blockNumber == 0 {
 			info.Timestamp = time.Now().AddDate(-1, 0, 0)
@@ -174,7 +221,7 @@ func fastParseHeader(envelopeBytes []byte) (*simpleTxHeader, error) {
 	}, nil
 }
 
-// getCreatorFromEnvelope 辅助函数：从 SignatureHeader 中提取创建者摘要
+// getCreatorFromEnvelope 辅助函数：从 SignatureHeader 中提取创建者摘要 (简单版)
 func getCreatorFromEnvelope(envelopeBytes []byte) string {
 	env := &common.Envelope{}
 	if err := proto.Unmarshal(envelopeBytes, env); err != nil {
@@ -189,6 +236,7 @@ func getCreatorFromEnvelope(envelopeBytes []byte) string {
 		return ""
 	}
 
+	// 如果这里也想显示域名，可以调用 parseCreatorIdentity 并返回 domain
 	if len(sigHeader.Creator) > 0 {
 		return fmt.Sprintf("Creator:%x", sigHeader.Creator[:min(8, len(sigHeader.Creator))])
 	}

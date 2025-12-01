@@ -463,6 +463,15 @@
                                 <div class="text-xs text-slate-400 font-bold uppercase">通道 (Channel)</div>
                                 <div class="text-slate-700 font-bold">{{ txDetail.channelId }}</div>
                             </div>
+
+                            <!-- 新增：显示交易发起者域名 -->
+                            <div v-if="txDetail.creatorDomain"
+                                class="p-3 bg-slate-50 rounded border border-slate-100 col-span-2">
+                                <div class="text-xs text-slate-400 font-bold uppercase">交易发起者 (Creator Domain)</div>
+                                <div class="text-slate-700 font-bold text-theme-primary font-mono">{{
+                                    txDetail.creatorDomain }}</div>
+                            </div>
+
                         </div>
 
                         <!-- 链码调用参数 (重要修改：匹配后端小写开头的 chainCodeInfos) -->

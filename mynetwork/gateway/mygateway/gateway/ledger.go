@@ -38,6 +38,10 @@ type Txinfo struct {
 	Size           int              `json:"size"`
 	ValidationCode int              `json:"validationCode"`
 	ChainCodeInfos []*ChainCodeInfo `json:"chainCodeInfos,omitempty"`
+
+	// 新增字段：身份信息
+	CreatorMSP    string `json:"creatorMSP"`    // MSP ID (例如 Org1MSP)
+	CreatorDomain string `json:"creatorDomain"` // 域名 (例如 org1.example.com)
 }
 
 type ChainCodeInfo struct {
@@ -249,7 +253,7 @@ func GetBlockTransactionsByPage(gw *client.Gateway, channelName string, blockNum
 		// 调用 utils.go 中的通用解析函数
 		txInfo, err := ParseTxInfo(envelopeBytes, validationCode)
 		if err != nil {
-			// 解析失败跳过，避免中断整个列表
+			// 解析失败跳过
 			continue
 		}
 
