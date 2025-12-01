@@ -440,9 +440,10 @@
                                 <div class="text-xs text-slate-400 font-bold uppercase">时间 (Time)</div>
                                 <div class="text-slate-700 font-bold">{{ formatTimestamp(txDetail.timestamp) }}</div>
                             </div>
+                            <!-- 修改处：使用映射显示中文交易类型 -->
                             <div class="p-3 bg-slate-50 rounded border border-slate-100">
                                 <div class="text-xs text-slate-400 font-bold uppercase">交易类型 (Type)</div>
-                                <div class="text-slate-700 font-bold">{{ txDetail.type }}</div>
+                                <div class="text-slate-700 font-bold">{{ formatTxType(txDetail.type) }}</div>
                             </div>
                             <div :class="txDetail.validationCode === 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'"
                                 class="p-3 rounded border">
@@ -606,6 +607,17 @@
                     orgCount: { label: '组织数量', key: 'orgCount', icon: '🏢' },
                     chainCodeCount: { label: '智能合约', key: 'chainCodeCount', icon: '📜' },
                     nodeCount: { label: '活跃节点', key: 'nodeCount', icon: '🖥️' }
+                };
+
+                // 定义交易类型映射函数
+                const formatTxType = (type) => {
+                    const map = {
+                        'ENDORSER_TRANSACTION': '背书交易 (ENDORSER)',
+                        'CONFIG': '配置交易 (CONFIG)',
+                        'CONFIG_UPDATE': '配置更新 (CONFIG_UPDATE)',
+                        'PEER_RESOURCE_UPDATE': '节点资源更新 (PEER_RESOURCE)'
+                    };
+                    return map[type] || type;
                 };
 
                 const refreshNodeData = async () => {
@@ -843,7 +855,8 @@
                     navigateTo, refreshCurrentPage, showBlockDetail, showTxDetail, navigateToPreviousBlock,
                     switchNodeTab, showAddDataModal, submitData, deleteKey, showKeyHistory, toggleJsonDisplay,
                     prevPage, nextPage, closeAllModals, filterChainData, loadChainData, refreshNodeData, startNodeRefresh, forceRefreshNode,
-                    formatNumber, formatTimestamp, formatBytes, getUsageColor, truncateText
+                    formatNumber, formatTimestamp, formatBytes, getUsageColor, truncateText,
+                    formatTxType // 导出新函数供模板使用
                 };
             }
         }).mount('#app');
