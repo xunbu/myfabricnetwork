@@ -2,121 +2,161 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"time"
 
 	"guolong.com/fabric-gateway/gateway"
 )
 
 const (
-	mspID        = "Org1MSP"
-	cryptoPath   = "../../organizations/peerOrganizations/guolong.com"
-	certPath     = cryptoPath + "/users/Admin@guolong.com/msp/signcerts"
-	keyPath      = cryptoPath + "/users/Admin@guolong.com/msp/keystore"
-	tlsCertPath  = cryptoPath + "/peers/peer0.guolong.com/tls/ca.crt"
-	peerEndpoint = "dns:///localhost:7051"
-	gatewayPeer  = "peer0.guolong.com"
+	mspID         = "Org1MSP"
+	cryptoPath    = "../../organizations/peerOrganizations/guolong.com"
+	certPath      = cryptoPath + "/users/Admin@guolong.com/msp/signcerts"
+	keyPath       = cryptoPath + "/users/Admin@guolong.com/msp/keystore"
+	tlsCertPath   = cryptoPath + "/peers/peer0.guolong.com/tls/ca.crt"
+	peerEndpoint  = "dns:///localhost:7051"
+	gatewayPeer   = "peer0.guolong.com"
+	channelName   = "mychannel"
+	chaincodeName = "basic"
 )
 
 func main() {
+	log.Println("=== 开始测试 Fabric Gateway 功能 ===")
+
+	// 1. 建立连接
+	log.Println("1. 正在连接到 Fabric 网络...")
 	clientConnection, err := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
 	if err != nil {
-		panic(err)
+		log.Fatalf("❌ 连接失败: %v", err)
 	}
 	defer clientConnection.Close()
 
 	gw, err := gateway.GetGateway(clientConnection, mspID, cryptoPath, certPath, keyPath)
 	if err != nil {
-		panic(err)
+		log.Fatalf("❌ 获取 Gateway 实例失败: %v", err)
 	}
-
 	defer gw.Close()
-	channelName := "mychannel"
-	// v2, _ := gateway.GetTransactionCount(gw, channelName)
-	// fmt.Println(v2)
-	// m := map[string]any{
-	// 	"first name":  "tom",
-	// 	"second name": "hanks",
-	// }
-	// m2 := map[string]any{
-	// 	"first name":  "tom",
-	// 	"second name": "Janks",
-	// }
-	// // gateway.PutMap(gw, channelName, "basic", "test", m)
-	// // gateway.PutMap(gw, channelName, "basic", "test", m2)
-	// // gateway.PutMap(gw, channelName, "basic", "test2", m2)
+	log.Println("✅ 连接成功")
 
-	// v := make(map[string]string)
-	// t, err := json.Marshal(m)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// t2, err := json.Marshal(m2)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// v["test3"] = string(t)
-	// v["test4"] = string(t2)
-	// fmt.Println(v)
-	// gateway.PutKVs(gw, channelName, channelName, v)
-	// gateway.PutValue(gw, channelName, "basic", "author", "xunbu")
-	// v, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKey", "author")
-	// if err != nil {
-	// 	fmt.Printf("error in EvaluateTransaction %v", err)
-	// }
-	// fmt.Printf("value:%s\n", v)
-	// v, _ := gateway.GetTxByID(gw, channelName, "287d49979e733fc0c528b58804ef3f1a29fe1bb47a530b949915e4efdea022d9")
-	// fmt.Println(v)
-
-	// v, _ := gateway.GetKeyHistory(gw, channelName, "basic", "author")
-	// for _, v2 := range *v {
-	// 	fmt.Printf("交易号:%s,值:%s,时间戳%s\n", v2.TxId, v2.Value, v2.Timestamp)
-	// }
-
-	// gateway.DeleteKey(gw, channelName, "basic", "author")
-	// 以下为admin-sdk
-	// peer, err := admin.GetDiscoveryPeer(clientConnection, mspID, cryptoPath, certPath, keyPath)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// v, err := peer.QueryInstalled(context.Background())
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Print(len(v.InstalledChaincodes))
-	// v, err := peer.PeerMembershipQuery(context.Background(), channelName, nil)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Printf("%v\n", len(v.PeersByOrg))
-	// v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(v)
-	// v, err := admin.GetOrdererCount(context.Background(), clientConnection, mspID, cryptoPath, certPath, keyPath, channelName)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(v)
-	v, err := gateway.GetAllData(gw, channelName, "basic")
-	if err != nil {
-		panic(err)
+	// 2. 启动监控 (monitor.go)
+	log.Println("2. 启动后台区块监控...")
+	if err := gateway.StartChainMonitor(gw, channelName); err != nil {
+		log.Fatalf("❌ 监控启动失败: %v", err)
 	}
-	fmt.Println(v)
+	// 给监控一点时间同步初始数据
+	time.Sleep(2 * time.Second)
 
-	// v2, err := json.Marshal(v)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(string(v2))
+	// 3. 测试内存缓存统计 (GetChainStats)
+	stats := gateway.GetChainStats()
+	fmt.Printf("   [内存缓存] 高度: %d, 交易总数: %d, 组织数: %d, 最新区块时间: %v\n",
+		stats.Height, stats.TxCount, stats.OrgCount, stats.LastBlockTime)
 
-	// v3, err := gateway.EvaluateTransaction(gw, channelName, "basic", "QueryByKeyAsBytes", "author")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// var v string
-	// err = json.Unmarshal(v3, &v)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(string(v3))
+	// 4. 链码交互测试: 写入数据 (PutValue)
+	testKey := "test_monitor_key"
+	testVal := fmt.Sprintf("value_created_at_%v", time.Now().Format(time.RFC3339))
+	log.Printf("3. 测试写入数据 Key=%s, Val=%s", testKey, testVal)
+
+	if _, err := gateway.PutValue(gw, channelName, chaincodeName, testKey, testVal); err != nil {
+		log.Fatalf("❌ 写入数据失败: %v", err)
+	}
+	log.Println("✅ 数据写入提交成功 (等待2秒让区块生成并被监控捕获)...")
+	time.Sleep(3 * time.Second) // 等待出块
+
+	// 5. 再次检查监控数据 (验证是否自动更新)
+	newStats := gateway.GetChainStats()
+	fmt.Printf("   [更新后缓存] 高度: %d (+%d), 交易总数: %d\n",
+		newStats.Height, newStats.Height-stats.Height, newStats.TxCount)
+
+	// 6. 链码交互测试: 读取数据 (GetValue)
+	log.Println("4. 测试读取数据...")
+	val, err := gateway.GetValue(gw, channelName, chaincodeName, testKey)
+	if err != nil {
+		log.Printf("❌ 读取失败: %v", err)
+	} else {
+		log.Printf("✅ 读取成功: %s", val)
+	}
+
+	// 7. 账本查询: 获取最新区块详情 (GetBlockByNum)
+	currentHeight := newStats.Height
+	if currentHeight > 0 {
+		log.Printf("5. 查询最新区块详情 (区块号: %d)...", currentHeight-1)
+		blockInfo, err := gateway.GetBlockByNum(gw, channelName, currentHeight-1)
+		if err != nil {
+			log.Printf("❌ 获取区块失败: %v", err)
+		} else {
+			fmt.Printf("   区块哈希: %s\n", blockInfo.BlockHash)
+			fmt.Printf("   交易数量: %d\n", blockInfo.TxCount)
+			fmt.Printf("   交易ID列表: %v\n", blockInfo.TxIDs)
+
+			// 8. 账本查询: 获取交易详情 (GetTxByID)
+			if len(blockInfo.TxIDs) > 0 {
+				txID := blockInfo.TxIDs[0]
+				log.Printf("6. 查询交易详情 (TxID: %s)...", txID)
+				txInfo, err := gateway.GetTxByID(gw, channelName, txID)
+				if err != nil {
+					log.Printf("❌ 获取交易详情失败: %v", err)
+				} else {
+					fmt.Printf("   交易时间: %v\n", txInfo.Timestamp)
+					fmt.Printf("   验证码: %d (0=Valid)\n", txInfo.ValidationCode)
+					if len(txInfo.ChainCodeInfos) > 0 {
+						fmt.Printf("   调用链码: %s, 参数: %v\n",
+							txInfo.ChainCodeInfos[0].ChainCodeName,
+							txInfo.ChainCodeInfos[0].Args)
+					}
+				}
+			}
+		}
+	}
+
+	// 9. 测试趋势数据缓存 (GetTrendData)
+	log.Println("7. 测试趋势数据缓存 (GetTrendData)...")
+	trendData := gateway.GetTrendData()
+	fmt.Printf("   缓存的最近区块数量: %d\n", len(trendData))
+	if len(trendData) > 0 {
+		latest := trendData[0]
+		fmt.Printf("   缓存中最新区块: #%d, Hash=%s...\n", latest.BlockNumber, latest.BlockHash[:10])
+	}
+
+	// 10. 测试 Key 历史记录 (GetKeyHistory)
+	log.Printf("8. 查询 Key 历史记录: %s", testKey)
+	history, err := gateway.GetKeyHistory(gw, channelName, chaincodeName, testKey)
+	if err != nil {
+		log.Printf("❌ 获取历史失败: %v", err)
+	} else {
+		for i, h := range *history {
+			fmt.Printf("   [%d] TxID: %s, Value: %s, IsDelete: %v\n", i, h.TxId, h.Value, h.IsDelete)
+		}
+	}
+
+	// 11. 测试分页查询区块 (GetBlockListByPage)
+	log.Println("9. 测试分页查询区块列表 (第0页, 5条)...")
+	blockPage, err := gateway.GetBlockListByPage(gw, channelName, 0, 5, false)
+	if err != nil {
+		log.Printf("❌ 分页查询失败: %v", err)
+	} else {
+		fmt.Printf("   获取到 %d 个区块, 总高度: %d\n", len(blockPage.Results), blockPage.Total)
+	}
+
+	// 12. 测试富查询 (GetAllData / QueryByRich)
+	log.Println("10. 测试富查询 (获取所有数据)...")
+	allData, err := gateway.GetAllData(gw, channelName, chaincodeName)
+	if err != nil {
+		log.Printf("❌ 富查询失败: %v", err)
+	} else {
+		fmt.Printf("   当前状态数据库记录数: %d\n", len(allData))
+		if len(allData) > 0 {
+			fmt.Printf("   第一条数据: Key=%s, Value=%s\n", allData[0].Key, string(allData[0].Value))
+		}
+	}
+
+	// 13. 清理测试数据
+	log.Println("11. 清理测试数据 (DeleteKey)...")
+	_, err = gateway.DeleteKey(gw, channelName, chaincodeName, testKey)
+	if err != nil {
+		log.Printf("❌ 删除失败: %v", err)
+	} else {
+		log.Println("✅ 删除成功")
+	}
+
+	log.Println("=== 测试结束 ===")
 }

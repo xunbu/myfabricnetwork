@@ -10,7 +10,7 @@ test:
       rateControl:
         type: fixed-rate
         opts:
-          tps: 100
+          tps: 20
       workload:
         module: benchmarks/scenario/my-test/write.js
 
@@ -20,6 +20,6 @@ test:
       rateControl:
         type: fixed-rate
         opts:
-          tps: 100
+          tps: 20
       workload:
         module: benchmarks/scenario/my-test/read.js
