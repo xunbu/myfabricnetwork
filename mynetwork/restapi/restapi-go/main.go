@@ -164,13 +164,33 @@ func getValueChainInfo(c *gin.Context) {
 }
 
 // [超级优化] 直接从内存返回，0 网络开销
+// 修改后的 Handler，支持 query 参数控制数量
 func getTrendData(c *gin.Context) {
-	trendData := gateway.GetTrendData()
+	// 1. 获取 Channel Name
+	channelName := c.MustGet("channelName").(string)
 
-	// 构造成 BlockPage 格式返回给前端
+	// 2. 获取 limit 参数 (默认 1000 条)
+	limitStr := c.DefaultQuery("limit", "1000")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 1000
+	}
+	// 限制最大查询数量，防止数据库压力过大
+	if limit > 2000 {
+		limit = 2000
+	}
+
+	// 3. 调用 Gateway 从数据库查询
+	trendData, err := gateway.GetTrendData(channelName, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取趋势数据失败: " + err.Error()})
+		return
+	}
+
+	// 4. 构造返回值
 	response := &gateway.BlockPage{
 		Results:  trendData,
-		Page:     0,
+		Page:     1, // 趋势图不属于严格分页，默认设为1
 		PageSize: len(trendData),
 		Total:    len(trendData),
 	}

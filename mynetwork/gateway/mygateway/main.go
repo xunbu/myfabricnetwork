@@ -18,10 +18,20 @@ const (
 	gatewayPeer   = "peer0.guolong.com"
 	channelName   = "mychannel"
 	chaincodeName = "basic"
+
+	// [新增] 数据库配置 (必须与 restapi 中或者实际环境保持一致)
+	mysqlDSN = "root:password@tcp(127.0.0.1:3306)/fabric_data?charset=utf8mb4&parseTime=True&loc=Local"
 )
 
 func main() {
 	log.Println("=== 开始测试 Fabric Gateway 功能 ===")
+
+	// [新增] 0. 初始化数据库 (Monitor 依赖数据库)
+	log.Println("0. 初始化数据库连接...")
+	if err := gateway.InitStore(mysqlDSN); err != nil {
+		log.Fatalf("❌ 初始化数据库失败: %v", err)
+	}
+	log.Println("✅ 数据库连接成功")
 
 	// 1. 建立连接
 	log.Println("1. 正在连接到 Fabric 网络...")
@@ -39,11 +49,12 @@ func main() {
 	log.Println("✅ 连接成功")
 
 	// 2. 启动监控 (monitor.go)
+	// 现在监控服务会检查 MySQL 中的创世块哈希，如果不对会自动重置 DB
 	log.Println("2. 启动后台区块监控...")
 	if err := gateway.StartChainMonitor(gw, channelName); err != nil {
 		log.Fatalf("❌ 监控启动失败: %v", err)
 	}
-	// 给监控一点时间同步初始数据
+	// 给监控一点时间同步初始数据或断点续传
 	time.Sleep(2 * time.Second)
 
 	// 3. 测试内存缓存统计 (GetChainStats)
@@ -109,12 +120,17 @@ func main() {
 	}
 
 	// 9. 测试趋势数据缓存 (GetTrendData)
-	log.Println("7. 测试趋势数据缓存 (GetTrendData)...")
-	trendData := gateway.GetTrendData()
-	fmt.Printf("   缓存的最近区块数量: %d\n", len(trendData))
-	if len(trendData) > 0 {
-		latest := trendData[0]
-		fmt.Printf("   缓存中最新区块: #%d, Hash=%s...\n", latest.BlockNumber, latest.BlockHash[:10])
+	// [修改] GetTrendData 现在从数据库读取，需要传入通道名和限制数量
+	log.Println("7. 测试趋势数据 (GetTrendData - 读数据库)...")
+	trendData, err := gateway.GetTrendData(channelName, 10) // 获取最近10条
+	if err != nil {
+		log.Printf("❌ 获取趋势数据失败: %v", err)
+	} else {
+		fmt.Printf("   获取到的最近区块数量: %d\n", len(trendData))
+		if len(trendData) > 0 {
+			latest := trendData[0]
+			fmt.Printf("   数据库中最新区块: #%d, Hash=%s...\n", latest.BlockNumber, latest.BlockHash[:10])
+		}
 	}
 
 	// 10. 测试 Key 历史记录 (GetKeyHistory)
