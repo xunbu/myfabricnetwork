@@ -28,9 +28,20 @@ const (
 	channelName   = "mychannel"
 	chaincodeName = "basic"
 	serverPort    = "8081"
+
+	// MySQL 配置 (请根据实际环境修改)
+	// 用户名:密码@tcp(地址:端口)/数据库名?parseTime=true
+	mysqlDSN = "qinhan:fabric111111@tcp(127.0.0.1:3306)/mynetwork?charset=utf8mb4&parseTime=True&loc=Local"
 )
 
 func main() {
+	// 0. 初始化 MySQL 存储
+	// 在启动 Fabric 监控前必须先初始化数据库
+	if err := gateway.InitStore(mysqlDSN); err != nil {
+		log.Fatalf("初始化数据库失败: %v", err)
+	}
+	log.Println("MySQL 数据库连接成功")
+
 	// 1. 初始化 Fabric 连接
 	clientConnection, err := gateway.NewGrpcConnection(tlsCertPath, gatewayPeer, peerEndpoint)
 	if err != nil {
@@ -44,7 +55,8 @@ func main() {
 	}
 	defer gw.Close()
 
-	// [优化] 启动全量区块监控 (后台维护内存缓存)
+	// [优化] 启动全量区块监控 (后台维护内存缓存 + MySQL持久化)
+	// 内部会自动检查创世块哈希，如果不对则清空 MySQL 重来
 	if err := gateway.StartChainMonitor(gw, channelName); err != nil {
 		log.Printf("启动区块链监控失败: %v", err)
 	}
@@ -119,7 +131,7 @@ func main() {
 	}
 }
 
-// --- Handler Functions ---
+// --- Handler Functions --- (保持不变，省略以节省空间，直接使用之前提供的代码即可)
 
 func getValueChainInfo(c *gin.Context) {
 	chaincodeGateway := c.MustGet("chaincodeGateway").(*chaincode.Gateway)
