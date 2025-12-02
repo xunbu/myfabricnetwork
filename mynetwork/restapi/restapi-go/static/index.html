@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hyperledger Fabric 区块链浏览器</title>
+    <title>区块链浏览器</title>
     <script src="/static/js/tailwindcss.js"></script>
     <script src="/static/js/vue.global.prod.js"></script>
     <script src="/static/js/vue-router.global.prod.js"></script>
@@ -56,6 +56,7 @@
             border-color: #cbd5e1;
         }
 
+        /* 链条连接线样式 */
         .chain-link::after {
             content: '';
             position: absolute;
@@ -67,8 +68,25 @@
             z-index: 0;
         }
 
-        .chain-item:last-child .chain-link::after {
-            display: none;
+        /* 最后一个实体的连接线隐藏（因为后面是省略号） */
+        .chain-item:last-of-type .chain-link::after {
+            /* 如果需要省略号连接，可以注释掉这行，或者单独调整 */
+            /* display: none; */
+        }
+
+        /* 针对最后几个区块做透明度渐变，增强“省略”的感觉 */
+        .chain-item:nth-last-child(2) {
+            opacity: 0.7;
+        }
+
+        .chain-item:nth-last-child(3) {
+            opacity: 0.85;
+        }
+
+        /* 容器右侧遮罩淡出效果 */
+        .mask-fade-right {
+            -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+            mask-image: linear-gradient(to right, black 85%, transparent 100%);
         }
 
         .btn-primary {
@@ -109,7 +127,7 @@
         <header class="bg-white/80 backdrop-blur-md border-b border-theme-border sticky top-0 z-50">
             <div class="container mx-auto px-6 h-16 flex justify-between items-center">
                 <div class="flex items-center space-x-3 cursor-pointer" @click="$router.push('/')">
-                    <div class="text-3xl text-theme-primary">⛓️</div>
+                    <!-- <div class="text-3xl text-theme-primary">⛓️</div> -->
                     <div>
                         <h1 class="text-xl font-bold text-slate-800">区块链浏览器</h1>
                         <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">企业级监控平台</div>
@@ -172,20 +190,21 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
                     <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
-                            class="w-1 h-5 bg-theme-primary rounded-full"></span> 交易趋势</h3>
+                            class="w-1 h-5 bg-theme-primary rounded-full"></span> 交易趋势 </h3>
                     <div class="flex-grow relative w-full"><canvas id="txChart"></canvas></div>
                 </div>
                 <div class="card-panel rounded-xl p-6 h-[380px] flex flex-col">
                     <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><span
-                            class="w-1 h-5 bg-theme-accent rounded-full"></span> 出块分布</h3>
+                            class="w-1 h-5 bg-theme-accent rounded-full"></span> 出块统计</h3>
                     <div class="flex-grow relative w-full"><canvas id="blockChart"></canvas></div>
                 </div>
             </div>
             <div class="card-panel rounded-xl p-0 overflow-hidden border-t-4 border-t-theme-primary">
                 <div class="bg-slate-50 px-6 py-3 border-b border-theme-border flex justify-between items-center">
-                    <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">⛓️ 实时区块流</h3>
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2 text-sm">⛓️ 实时区块流 (最新 50 块)</h3>
                 </div>
-                <div class="overflow-x-auto custom-scrollbar p-8 bg-slate-50/50">
+                <!-- 增加了 mask-fade-right 类来实现右侧淡出效果 -->
+                <div class="overflow-x-auto custom-scrollbar p-8 bg-slate-50/50 mask-fade-right">
                     <div class="flex items-center space-x-8 min-w-max px-4">
                         <div v-for="block in trendBlocks" :key="block.blockNumber"
                             class="chain-item relative group cursor-pointer" @click="goToBlock(block.blockNumber)">
@@ -210,6 +229,15 @@
                                         <span>{{ formatBytes(block.blockSize) }}</span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- 省略号视觉元素：当有数据且被截断时显示 -->
+                        <div v-if="trendBlocks.length >= 50"
+                            class="chain-item relative flex items-center justify-center pl-4 opacity-50">
+                            <div class="flex flex-col items-center justify-center space-y-2">
+                                <div class="text-4xl text-slate-300 font-bold tracking-widest leading-none">•••</div>
+                                <div class="text-[10px] text-slate-400 font-bold uppercase">History</div>
                             </div>
                         </div>
                     </div>
@@ -256,7 +284,7 @@
         </div>
     </template>
 
-    <!-- 2. 区块详情模版 -->
+    <!-- 2. 区块详情模版 (保持不变) -->
     <template id="tpl-block-detail">
         <div class="space-y-6">
             <div class="flex items-center justify-between">
@@ -355,7 +383,7 @@
         </div>
     </template>
 
-    <!-- 3. 节点监控模版 (更新部分) -->
+    <!-- 3. 节点监控模版 (保持不变) -->
     <template id="tpl-nodes">
         <div class="space-y-6">
             <div class="card-panel rounded-xl p-4 flex flex-wrap gap-4 justify-between items-center">
@@ -383,8 +411,6 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <!-- 注意：v-for 的 key 最好不要只用 index，用 name 确保唯一性 -->
-                <!-- 使用 v-show 或 keep-alive 可能无法很好配合 Chart.js 的 Canvas 重绘，因此在 switchNodeTab 时会等待 nextTick 重建 -->
                 <div v-for="(node, name) in (nodeTab === 'cpu' ? cpuNodes : memoryNodes)" :key="name"
                     class="card-panel rounded-xl p-6 border-t-4"
                     :class="nodeTab === 'cpu' ? 'border-t-theme-primary' : 'border-t-theme-accent'">
@@ -396,7 +422,6 @@
                         </div>
                     </div>
                     <div class="h-48 w-full relative">
-                        <!-- ID 动态绑定，确保切换 tab 时 ID 变化 -->
                         <canvas :id="`${nodeTab}-chart-${name}`" class="node-chart"></canvas>
                     </div>
                 </div>
@@ -404,7 +429,7 @@
         </div>
     </template>
 
-    <!-- 4. 链上数据模版 -->
+    <!-- 4. 链上数据模版 (保持不变) -->
     <template id="tpl-data">
         <div class="space-y-6">
             <div class="card-panel rounded-xl p-5 flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -524,7 +549,7 @@
         </div>
     </template>
 
-    <!-- 5. 交易详情模版 -->
+    <!-- 5. 交易详情模版 (保持不变) -->
     <template id="tpl-tx-modal">
         <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="$emit('close')"></div>
@@ -587,7 +612,8 @@
                                         class="text-xs font-mono text-slate-600 bg-white p-2 rounded border border-slate-200 break-all flex">
                                         <span
                                             class="text-slate-400 mr-2 select-none font-bold whitespace-nowrap">Arg[{{i}}]</span><span>{{
-                                            arg }}</span></div>
+                                            arg }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -623,7 +649,7 @@
             }
         };
 
-        // 页面: 首页
+        // 页面: 首页 (修改的核心区域)
         const HomePage = {
             template: '#tpl-home',
             setup() {
@@ -638,10 +664,24 @@
 
                 const refreshData = async () => {
                     try {
-                        const [infoRes, blockRes, trendRes] = await Promise.all([fetch('/valuechain/info'), fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize}`), fetch('/valuechain/trend')]);
+                        const [infoRes, blockRes, trendRes] = await Promise.all([
+                            fetch('/valuechain/info'),
+                            fetch(`/valuechain/blocks?pageNum=${blockPage.value}&pageSize=${pageSize}`),
+                            fetch('/valuechain/trend') // 假设这里后端返回了缓存的 1000 个块
+                        ]);
+
                         if (infoRes.ok) Object.assign(overview, await infoRes.json());
                         if (blockRes.ok) blocks.value = (await blockRes.json()).blockPage || [];
-                        if (trendRes.ok) { trendBlocks.value = (await trendRes.json()).blockPage || []; processCharts(trendBlocks.value); }
+
+                        if (trendRes.ok) {
+                            const rawData = (await trendRes.json()).blockPage || [];
+
+                            // 1. 图表数据处理：传递完整的 rawData (例如 1000 个块) 以生成准确的按天趋势
+                            processCharts(rawData);
+
+                            // 2. 区块流展示：仅截取最新的 50 个用于前端展示
+                            trendBlocks.value = rawData.slice(0, 50);
+                        }
                     } catch (e) { console.error("Home refresh failed", e); }
                 };
 
@@ -649,16 +689,72 @@
                     const ctxTx = document.getElementById('txChart');
                     const ctxBlk = document.getElementById('blockChart');
                     if (!ctxTx || !ctxBlk) return;
+
                     const buckets = {};
-                    const now = new Date(); now.setMinutes(0, 0, 0);
                     const labels = [];
-                    for (let i = 23; i >= 0; i--) { const d = new Date(now.getTime() - i * 3600000); const k = `${d.getDate()}-${d.getHours()}`; labels.push(`${d.getHours()}:00`); buckets[k] = { tx: 0, blk: 0 }; }
-                    rawBlocks.forEach(b => { const d = new Date(b.timestamp); const k = `${d.getDate()}-${d.getHours()}`; if (buckets[k]) { buckets[k].blk++; buckets[k].tx += b.txCount; } });
-                    const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { grid: { color: '#e2e8f0', borderDash: [4, 4] } } } };
+                    // 配置：显示最近 14 天的趋势
+                    const daysToShow = 14;
+
+                    // 初始化 buckets (YYYY-MM-DD 为 Key)
+                    for (let i = daysToShow - 1; i >= 0; i--) {
+                        const d = new Date();
+                        d.setDate(d.getDate() - i);
+                        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        const label = `${d.getMonth() + 1}/${d.getDate()}`; // Label 显示 M/D
+                        labels.push(label);
+                        buckets[key] = { tx: 0, blk: 0 };
+                    }
+
+                    // 填充数据
+                    rawBlocks.forEach(b => {
+                        const d = new Date(b.timestamp);
+                        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        if (buckets[key]) {
+                            buckets[key].blk++;
+                            buckets[key].tx += b.txCount;
+                        }
+                    });
+
+                    const opts = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: false },
+                        scales: {
+                            x: { grid: { display: false } },
+                            y: { grid: { color: '#e2e8f0', borderDash: [4, 4] }, beginAtZero: true }
+                        }
+                    };
+
+                    // 渲染图表
                     if (txChart) txChart.destroy();
-                    txChart = new Chart(ctxTx, { type: 'line', data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.tx), borderColor: '#2563eb', backgroundColor: '#2563eb20', fill: true, tension: 0.4 }] }, options: opts });
+                    txChart = new Chart(ctxTx, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{
+                                data: Object.values(buckets).map(v => v.tx),
+                                borderColor: '#2563eb',
+                                backgroundColor: '#2563eb20',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: opts
+                    });
+
                     if (blockChart) blockChart.destroy();
-                    blockChart = new Chart(ctxBlk, { type: 'bar', data: { labels, datasets: [{ data: Object.values(buckets).map(v => v.blk), backgroundColor: '#9333ea', borderRadius: 3 }] }, options: opts });
+                    blockChart = new Chart(ctxBlk, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{
+                                data: Object.values(buckets).map(v => v.blk),
+                                backgroundColor: '#9333ea',
+                                borderRadius: 3
+                            }]
+                        },
+                        options: opts
+                    });
                 };
 
                 const prevPage = () => { if (blockPage.value > 0) { blockPage.value--; refreshData(); } };
@@ -672,7 +768,7 @@
             }
         };
 
-        // 页面: 节点监控 (重点修改区域)
+        // 页面: 节点监控 (保持修改后的动态 Y 轴逻辑)
         const NodesPage = {
             template: '#tpl-nodes',
             name: 'NodesPage',
@@ -685,12 +781,9 @@
                 const charts = {}; // 存储图表实例
                 let timer = null;
 
-                // 核心: 纵坐标动态范围算法
                 const calculateYAxisMax = (dataValues) => {
                     const maxVal = Math.max(...dataValues, 0);
-                    // 算法：最大值 + 20% 的缓冲空间，向上取整到最近的 10
                     let limit = Math.ceil((maxVal * 1.2) / 10) * 10;
-                    // 约束：不小于 10（避免数值极小时图表太难看），不大于 100（百分比上限）
                     if (limit < 10) limit = 10;
                     if (limit > 100) limit = 100;
                     return limit;
@@ -706,7 +799,6 @@
                         const targetNodes = currentTab === 'cpu' ? cpuNodes : memoryNodes;
                         const cutoffTime = Date.now() - (parseInt(timeRange.value) * 60 * 1000);
 
-                        // 1. 更新 Vue 响应式数据 (显示数值)
                         Object.keys(data).forEach(name => {
                             const hist = data[name] || [];
                             const last = hist[hist.length - 1] || {};
@@ -717,7 +809,6 @@
                             };
                         });
 
-                        // 2. 确保 DOM 更新后绘制图表
                         nextTick(() => {
                             Object.keys(data).forEach(name => {
                                 const hist = data[name] || [];
@@ -731,21 +822,16 @@
                                 const ctxId = `${currentTab}-chart-${name}`;
                                 const ctx = document.getElementById(ctxId);
 
-                                // 如果 Canvas 不存在(可能切换Tab太快)，直接跳过
                                 if (!ctx) return;
 
-                                // 计算动态纵坐标上限
                                 const dynamicMax = calculateYAxisMax(values);
 
                                 if (charts[ctxId]) {
-                                    // 更新现有图表
                                     charts[ctxId].data.labels = labels;
                                     charts[ctxId].data.datasets[0].data = values;
-                                    // 动态更新纵坐标
                                     charts[ctxId].options.scales.y.max = dynamicMax;
-                                    charts[ctxId].update('none'); // none 模式避免每次刷新都闪烁动画
+                                    charts[ctxId].update('none');
                                 } else {
-                                    // 创建新图表
                                     const color = currentTab === 'cpu' ? '#2563eb' : '#9333ea';
                                     charts[ctxId] = new Chart(ctx, {
                                         type: 'line',
@@ -769,7 +855,7 @@
                                                 x: { display: false },
                                                 y: {
                                                     min: 0,
-                                                    max: dynamicMax, // 使用计算出的动态最大值
+                                                    max: dynamicMax,
                                                     ticks: { count: 5 }
                                                 }
                                             }
@@ -783,22 +869,9 @@
 
                 const switchNodeTab = (t) => {
                     if (nodeTab.value === t) return;
-
-                    // 1. 清理旧图表实例
-                    Object.keys(charts).forEach(key => {
-                        if (charts[key]) {
-                            charts[key].destroy();
-                            delete charts[key];
-                        }
-                    });
-
-                    // 2. 切换 Tab 状态
+                    Object.keys(charts).forEach(key => { if (charts[key]) { charts[key].destroy(); delete charts[key]; } });
                     nodeTab.value = t;
-
-                    // 3. 等待 DOM 更新后刷新数据并重建图表
-                    nextTick(() => {
-                        refreshNodeData();
-                    });
+                    nextTick(() => { refreshNodeData(); });
                 };
 
                 const startNodeRefresh = () => {

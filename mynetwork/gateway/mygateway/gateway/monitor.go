@@ -26,7 +26,7 @@ type safeCache struct {
 	mu           sync.RWMutex // 读写锁
 }
 
-const MaxRecentBlocks = 50 // 缓存最近多少个区块用于趋势图
+const MaxRecentBlocks = 1000 // 缓存最近多少个区块用于趋势图
 
 // 全局单例缓存
 var globalCache = &safeCache{
