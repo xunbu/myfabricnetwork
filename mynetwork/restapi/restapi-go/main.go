@@ -87,6 +87,11 @@ func main() {
 
 	// 静态文件服务
 	r.Static("/static", "./static")
+	r.Static("/assets", "./static/assets")
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./static/index.html")
+	})
+
 	r.GET("/", func(c *gin.Context) {
 		c.File("./static/index.html")
 	})

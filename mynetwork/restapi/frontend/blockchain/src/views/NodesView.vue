@@ -55,7 +55,7 @@ import Chart from 'chart.js/auto';
 import { getUsageColor } from '../utils';
 
 defineOptions({
-  name: 'NodesPage'
+    name: 'NodesPage'
 });
 
 const nodeTab = ref('cpu');
@@ -97,7 +97,21 @@ const refreshNodeData = async () => {
         nextTick(() => {
             Object.keys(data).forEach(name => {
                 const hist = data[name] || [];
-                const filtered = hist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
+                // const filtered = hist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
+                let filtered = [];
+
+                if (hist.length > 0) {
+                    // 1. 获取这份数据里【最新】的一个时间点 (也就是数组最后一条)
+                    const lastItemTime = new Date(hist[hist.length - 1].Timestamp).getTime();
+
+                    // 2. 以【最新数据时间】为基准，向前推算 N 分钟
+                    const rangeInMs = parseInt(timeRange.value) * 60 * 1000;
+                    const cutoffTime = lastItemTime - rangeInMs;
+
+                    // 3. 进行过滤
+                    filtered = hist.filter(d => new Date(d.Timestamp).getTime() > cutoffTime);
+                }
+
                 const labels = filtered.map(d => new Date(d.Timestamp).toLocaleTimeString());
                 const values = filtered.map(d => currentTab === 'cpu'
                     ? (d.CPUUsage || 0)
